@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>3D Block Builder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Top Navigation & Info Bar -->
+  <header class="top-bar">
+    <div class="brand">
+      <div class="brand-icon">
+        <div class="mini-cube">
+          <div class="m-face m-front"></div>
+          <div class="m-face m-top"></div>
+          <div class="m-face m-right"></div>
+        </div>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">BLOCKS 3D</span>
+        <span class="brand-subtitle">Interactive 3D Builder</span>
+      </div>
+    </div>
+
+    <!-- Active Mode Selector -->
+    <div class="tool-group mode-selector">
+      <button class="tool-btn active" data-mode="add" id="btn-mode-add" title="Add Block (Click on any face)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        <span>Add</span>
+      </button>
+      <button class="tool-btn" data-mode="delete" id="btn-mode-delete" title="Delete Block (Click block to delete / Shift+Click)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        <span>Delete</span>
+      </button>
+      <button class="tool-btn" data-mode="paint" id="btn-mode-paint" title="Paint Block (Click block to recolor)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.28 19.58 10.6 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
+        <span>Paint</span>
+      </button>
+    </div>
+
+    <!-- Stats & Quick Actions -->
+    <div class="stats-group">
+      <div class="stat-badge" title="Total blocks in the scene">
+        <span class="stat-label">Blocks:</span>
+        <span class="stat-value" id="block-count">1</span>
+      </div>
+      <button class="icon-btn" id="btn-undo" title="Undo (Ctrl+Z)" disabled>
+        <svg viewBox="0 0 24 24" class="icon"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-redo" title="Redo (Ctrl+Y)" disabled>
+        <svg viewBox="0 0 24 24" class="icon"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-xray" title="Toggle X-Ray / See-Through Mode (X)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-heights" title="Toggle Elevation Height Labels (H)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M7 2h10v2H7V2zm5 4l-4 4h3v8H8l4 4 4-4h-3v-8h3l-4-4zm-5 14h10v2H7v-2z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-sound" title="Toggle Sound">
+        <svg viewBox="0 0 24 24" class="icon" id="sound-icon-on"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        <svg viewBox="0 0 24 24" class="icon hidden" id="sound-icon-off"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-help" title="Instructions & Controls">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm1.07-7.75l-.9.92C12.45 11.9 12 12.5 12 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Left Floating Palette Toolbar -->
+  <aside class="left-palette">
+    <div class="palette-card">
+      <div class="palette-header">
+        <span>Color Palette</span>
+        <label class="rainbow-toggle" title="Pick a random color for each block">
+          <input type="checkbox" id="random-color-toggle" />
+          <span class="slider"></span>
+          <span class="label-text">Random</span>
+        </label>
+      </div>
+
+      <div class="color-swatches" id="color-swatches">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="custom-color-row">
+        <label for="custom-color-picker" class="custom-color-btn" title="Pick any custom color">
+          <input type="color" id="custom-color-picker" value="#ffffff" />
+          <span class="custom-color-preview" id="custom-color-preview" style="background-color: #ffffff;"></span>
+          <span class="custom-color-label">Custom Color</span>
+        </label>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="presets-section">
+        <span class="section-label">Presets</span>
+        <div class="presets-grid">
+          <button class="preset-btn" data-preset="single" title="Start with a single cube">1 Cube</button>
+          <button class="preset-btn" data-preset="stairs" title="Create 3D stairs">Stairs</button>
+          <button class="preset-btn" data-preset="pyramid" title="Create pyramid structure">Pyramid</button>
+          <button class="preset-btn" data-preset="cross" title="Create 3D cross">Cross</button>
+          <button class="preset-btn" data-preset="tower" title="Create tall spiral tower">Tower</button>
+          <button class="preset-btn" data-preset="heart" title="Create voxel heart">Heart</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="action-buttons">
+        <button class="btn btn-secondary" id="btn-clear" title="Clear all blocks">Clear All</button>
+        <button class="btn btn-secondary" id="btn-export" title="Export creation as JSON">Export</button>
+        <button class="btn btn-secondary" id="btn-import" title="Import creation from JSON">Import</button>
+        <input type="file" id="import-file-input" accept=".json" style="display:none" />
+      </div>
+    </div>
+  </aside>
+
+  <!-- Floating 3D Navigation Controls (Right Bottom) -->
+  <!-- Floating 3D Navigation Controls (Right Bottom) -->
+  <div class="camera-controls">
+    <div class="cam-nav-group">
+      <button class="cam-btn" id="btn-zoom-in" title="Zoom In (+)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      </button>
+      <div class="zoom-level-display" id="zoom-indicator">100%</div>
+      <button class="cam-btn" id="btn-zoom-out" title="Zoom Out (-)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M19 13H5v-2h14v2z"/></svg>
+      </button>
+      <div class="cam-divider"></div>
+      <button class="cam-btn" id="btn-recenter" title="Recenter View & Focus (R)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+      </button>
+      <button class="cam-btn" id="btn-auto-rotate" title="Toggle Auto-Spin Showcase">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+      </button>
+    </div>
+    <div class="cam-divider"></div>
+    <div class="view-preset-pills">
+      <button class="pill-btn active" data-view="iso" title="Free 3D Isometric Orbit View">
+        <span class="pill-dot dot-iso"></span>3D ISO
+      </button>
+      <button class="pill-btn" data-view="top" title="2D Top View (Plan)">
+        <span class="pill-dot dot-top"></span>TOP
+      </button>
+      <button class="pill-btn" data-view="bottom" title="2D Bottom View (Under)">
+        <span class="pill-dot dot-bottom"></span>BOTTOM
+      </button>
+      <button class="pill-btn" data-view="front" title="2D Front View (Elevation)">
+        <span class="pill-dot dot-front"></span>FRONT
+      </button>
+      <button class="pill-btn" data-view="back" title="2D Back View (Rear)">
+        <span class="pill-dot dot-back"></span>BACK
+      </button>
+      <button class="pill-btn" data-view="left" title="2D Left Side View">
+        <span class="pill-dot dot-left"></span>LEFT
+      </button>
+      <button class="pill-btn" data-view="right" title="2D Right Side View">
+        <span class="pill-dot dot-right"></span>RIGHT
+      </button>
+    </div>
+  </div>
+
+  <!-- Help & Shortcuts Modal -->
+  <div class="modal-overlay hidden" id="help-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>How to use 3D Block Builder</h3>
+        <button class="modal-close-btn" id="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="help-section">
+          <h4>Building</h4>
+          <p><strong>Add Blocks:</strong> Hover over any exposed face of a 3D block. A ghost block preview will indicate where the new cube will snap. Left click to attach!</p>
+          <p><strong>Delete Blocks:</strong> Hold <span class="kbd">Shift</span> and click any block to remove it, or switch to the <em>Delete</em> tool in the top bar.</p>
+          <p><strong>Paint Blocks:</strong> Select a color from the left palette and switch to the <em>Paint</em> tool to recolor existing blocks.</p>
+        </div>
+        <div class="help-section">
+          <h4>Architecture 2D Views & Orientation</h4>
+          <p><strong>3D Ground Compass Arrows:</strong> Look at the 3D ground plane around your blocks! Color-coded arrows and badges point at each side of the structure: <span style="color:#60a5fa;font-weight:700">▲ FRONT</span> (Blue), <span style="color:#c084fc;font-weight:700">▲ BACK</span> (Purple), <span style="color:#fbbf24;font-weight:700">▲ LEFT</span> (Amber), and <span style="color:#34d399;font-weight:700">▲ RIGHT</span> (Emerald). Click any arrow to immediately switch to that view!</p>
+          <p><strong>Interactive 3D ViewCube:</strong> The orientation cube in the top-right corner rotates in real-time with the scene. Click any face on the ViewCube to snap flat to that view, or drag it directly to orbit!</p>
+          <p><strong>Hover Previews:</strong> Hovering your mouse over any 2D view button or ViewCube face will highlight that side's arrow in the 3D scene before you click.</p>
+          <p><strong>Orthogonal Projections:</strong> Click <strong>TOP</strong>, <strong>BOTTOM</strong>, <strong>FRONT</strong>, <strong>BACK</strong>, <strong>LEFT</strong>, or <strong>RIGHT</strong> to view true architectural projections without perspective distortion. Toggle <strong>X-Ray</strong> to see through upper blocks, or <strong>Height Labels</strong> to see vertical layers.</p>
+        </div>
+        <div class="help-section">
+          <h4>3D Camera Controls</h4>
+          <p><strong>Rotate:</strong> Click and drag anywhere with the mouse to orbit around your creation in full 3D.</p>
+          <p><strong>Zoom:</strong> Use mouse scroll wheel, trackpad pinch, or the on-screen +/- buttons to zoom smoothly.</p>
+          <p><strong>Pan:</strong> Hold <span class="kbd">Shift</span> and drag, or drag with the <strong>Right Mouse Button</strong> to pan around the scene.</p>
+          <p><strong>Reset / Recenter:</strong> Press <span class="kbd">R</span> or click the recenter icon to center the camera on your creation.</p>
+        </div>
+        <div class="help-section">
+          <h4>Keyboard Shortcuts</h4>
+          <ul>
+            <li><span class="kbd">1</span> Add Tool</li>
+            <li><span class="kbd">2</span> Delete Tool</li>
+            <li><span class="kbd">3</span> Paint Tool</li>
+            <li><span class="kbd">X</span> Toggle X-Ray Mode</li>
+            <li><span class="kbd">H</span> Toggle Height Labels</li>
+            <li><span class="kbd">Ctrl</span>+<span class="kbd">Z</span> Undo</li>
+            <li><span class="kbd">Ctrl</span>+<span class="kbd">Y</span> Redo</li>
+            <li><span class="kbd">Space</span> Auto-Rotate</li>
+            <li><span class="kbd">R</span> Recenter Camera</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btn-modal-gotit">Got it, let's build!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main 3D Viewport Area -->
+  <main id="viewport">
+    <!-- 2D Architecture View Banner -->
+    <div id="arch-banner" class="arch-banner hidden">
+      <span class="arch-badge">📐 2D ARCHITECTURE VIEW</span>
+      <span id="arch-banner-title" class="arch-title">Top Plan</span>
+      <button id="btn-exit-arch" class="arch-btn-switch" title="Return to 3D Orbit">Orbit 3D</button>
+    </div>
+
+    <!-- 3D Orientation ViewCube Gizmo (Top Right) -->
+    <div class="viewcube-widget" id="viewcube-widget" title="Interactive 3D ViewCube: click any face to snap view, or drag to rotate">
+      <div class="viewcube-header">
+        <span class="viewcube-title">ORIENTATION</span>
+        <button class="viewcube-home-btn" id="btn-viewcube-home" title="Reset to Isometric 3D Orbit">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        </button>
+      </div>
+      <div class="viewcube-viewport" id="viewcube-viewport">
+        <div class="viewcube" id="viewcube">
+          <div class="vface v-front" data-view="front" title="Front Elevation">FRONT</div>
+          <div class="vface v-back" data-view="back" title="Back Elevation">BACK</div>
+          <div class="vface v-left" data-view="left" title="Left Elevation">LEFT</div>
+          <div class="vface v-right" data-view="right" title="Right Elevation">RIGHT</div>
+          <div class="vface v-top" data-view="top" title="Top Plan">TOP</div>
+          <div class="vface v-bottom" data-view="bottom" title="Bottom View">BTM</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="world">
+      <!-- Ground reference grid plane -->
+      <div id="ground-grid"></div>
+
+      <!-- 3D Ground Orientation Arrows & Compass Badges -->
+      <div id="ground-compass" class="ground-compass">
+        <div class="dir-indicator dir-front" data-view="front" title="FRONT: Click to switch to 2D Front View">
+          <div class="dir-line"></div>
+          <div class="dir-arrow-head"></div>
+          <div class="dir-pill">
+            <span class="dir-icon">👁️</span>
+            <span class="dir-name">FRONT</span>
+          </div>
+        </div>
+        <div class="dir-indicator dir-back" data-view="back" title="BACK: Click to switch to 2D Back View">
+          <div class="dir-line"></div>
+          <div class="dir-arrow-head"></div>
+          <div class="dir-pill">
+            <span class="dir-icon">👁️</span>
+            <span class="dir-name">BACK</span>
+          </div>
+        </div>
+        <div class="dir-indicator dir-left" data-view="left" title="LEFT: Click to switch to 2D Left View">
+          <div class="dir-line"></div>
+          <div class="dir-arrow-head"></div>
+          <div class="dir-pill">
+            <span class="dir-icon">👁️</span>
+            <span class="dir-name">LEFT</span>
+          </div>
+        </div>
+        <div class="dir-indicator dir-right" data-view="right" title="RIGHT: Click to switch to 2D Right View">
+          <div class="dir-line"></div>
+          <div class="dir-arrow-head"></div>
+          <div class="dir-pill">
+            <span class="dir-icon">👁️</span>
+            <span class="dir-name">RIGHT</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Container for all 3D cubes -->
+      <div id="blocks-container"></div>
+
+      <!-- Ghost / Preview block for snapping -->
+      <div id="ghost-block" class="cube ghost-cube hidden">
+        <div class="face front"></div>
+        <div class="face back"></div>
+        <div class="face right"></div>
+        <div class="face left"></div>
+        <div class="face top"></div>
+        <div class="face bottom"></div>
+      </div>
+    </div>
+
+    <!-- Empty Scene Starter -->
+    <button id="empty-starter" class="hidden" title="Place a new cube at origin">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      <span>Click to place starting block</span>
+    </button>
+  </main>
+
+  <!-- Audio elements generated via Web Audio API in app.js -->
+  <script src="app.js"></script>
+</body>
+</html>
