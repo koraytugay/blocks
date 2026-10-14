@@ -1174,8 +1174,8 @@ body[data-active-mode="paint"] .cube:hover .face {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
+  justify-content: center;
+  padding: 5px 14px;
   background: #0f172a;
   border: 2px solid var(--dir-color);
   border-radius: 20px;
@@ -1186,10 +1186,6 @@ body[data-active-mode="paint"] .cube:hover .face {
   white-space: nowrap;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 12px var(--dir-glow);
   transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
-}
-
-.dir-pill .dir-icon {
-  font-size: 12px;
 }
 
 /* Direction Themes */
