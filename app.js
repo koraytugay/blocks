@@ -868,21 +868,28 @@
       this.setupToolButtons();
       this.setupCameraButtons();
       this.setupPresets();
+      this.setupRandomGenerator();
       this.setupExportImport();
       this.setupInteractiveBlockClicks();
       this.setupKeyboardShortcuts();
       this.setupHelpModal();
       this.setupDirectionIndicators();
 
-      // Check URL parameters for preset and view
+      // Check URL parameters for preset, random, and view
       const params = new URLSearchParams(window.location.search);
       const presetParam = params.get('preset');
+      const randomParam = params.get('random');
       const viewParam = params.get('view');
 
       if (presetParam && this.presets && this.presets[presetParam]) {
         const list = this.presets[presetParam]();
         this.grid.loadState(list);
         this.camera.resetView(this.grid.getBounds());
+      } else if (randomParam) {
+        const count = parseInt(randomParam, 10) || 15;
+        const inputCount = document.getElementById('input-random-count');
+        if (inputCount) inputCount.value = count;
+        this.buildRandomStructure(count);
       } else {
         // Spawn initial center cube
         this.grid.addBlock(0, 0, 0, this.currentColor, false, false);
@@ -1333,6 +1340,124 @@
             this.camera.resetView(this.grid.getBounds());
             this.updateCompassPositions();
           }
+        });
+      });
+    }
+
+    buildRandomStructure(targetCount = 15) {
+      const count = Math.max(1, Math.min(200, parseInt(targetCount, 10) || 15));
+      const blocks = [];
+      const occupied = new Set();
+      const candidates = [];
+      const candidateSet = new Set();
+
+      const addOccupied = (x, y, z) => occupied.add(`${x},${y},${z}`);
+      const isOccupied = (x, y, z) => occupied.has(`${x},${y},${z}`);
+
+      // Start with origin block
+      const startColor = this.isRandomColor ? this.getRandomPaletteColor() : PALETTE_COLORS[0];
+      blocks.push({ x: 0, y: 0, z: 0, color: startColor });
+      addOccupied(0, 0, 0);
+
+      const neighborDirs = [
+        { dx: 1, dy: 0, dz: 0 },
+        { dx: -1, dy: 0, dz: 0 },
+        { dx: 0, dy: 1, dz: 0 },
+        { dx: 0, dy: -1, dz: 0 },
+        { dx: 0, dy: 0, dz: 1 },
+        { dx: 0, dy: 0, dz: -1 }
+      ];
+
+      const addCandidates = (x, y, z) => {
+        for (const d of neighborDirs) {
+          const nx = x + d.dx;
+          const ny = y + d.dy;
+          const nz = z + d.dz;
+          // Keep structure on or above ground (ny >= 0)
+          if (ny >= 0 && !isOccupied(nx, ny, nz)) {
+            const k = `${nx},${ny},${nz}`;
+            if (!candidateSet.has(k)) {
+              candidateSet.add(k);
+              candidates.push({ x: nx, y: ny, z: nz, key: k });
+            }
+          }
+        }
+      };
+
+      addCandidates(0, 0, 0);
+
+      while (blocks.length < count && candidates.length > 0) {
+        // Bias towards recent candidates (65%) for natural organic architectural shapes (wings, towers, arches)
+        let idx;
+        if (Math.random() < 0.65 && candidates.length > 2) {
+          const start = Math.floor(candidates.length * 0.45);
+          idx = start + Math.floor(Math.random() * (candidates.length - start));
+        } else {
+          idx = Math.floor(Math.random() * candidates.length);
+        }
+
+        const chosen = candidates.splice(idx, 1)[0];
+        candidateSet.delete(chosen.key);
+
+        if (isOccupied(chosen.x, chosen.y, chosen.z)) continue;
+
+        // Color selection: vibrant palette rotation or current color
+        let blockColor;
+        if (this.isRandomColor) {
+          blockColor = this.getRandomPaletteColor();
+        } else if (this.currentColor !== PALETTE_COLORS[0]) {
+          blockColor = this.currentColor;
+        } else {
+          blockColor = PALETTE_COLORS[blocks.length % PALETTE_COLORS.length];
+        }
+
+        blocks.push({ x: chosen.x, y: chosen.y, z: chosen.z, color: blockColor });
+        addOccupied(chosen.x, chosen.y, chosen.z);
+        addCandidates(chosen.x, chosen.y, chosen.z);
+      }
+
+      this.grid.loadState(blocks);
+      this.sound.playPop(340, 680, 0.12);
+      this.camera.resetView(this.grid.getBounds());
+      this.updateCompassPositions();
+      return blocks;
+    }
+
+    setupRandomGenerator() {
+      const inputCount = document.getElementById('input-random-count');
+      const btnGenerate = document.getElementById('btn-generate-random');
+      const chips = document.querySelectorAll('.random-quick-chips .chip-btn');
+
+      const triggerGenerate = (val) => {
+        const count = parseInt(val !== undefined ? val : inputCount.value, 10);
+        if (isNaN(count) || count < 1) {
+          inputCount.value = 15;
+          this.buildRandomStructure(15);
+        } else {
+          const clamped = Math.max(1, Math.min(200, count));
+          inputCount.value = clamped;
+          this.buildRandomStructure(clamped);
+        }
+      };
+
+      if (btnGenerate) {
+        btnGenerate.addEventListener('click', () => triggerGenerate());
+      }
+
+      if (inputCount) {
+        inputCount.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            triggerGenerate();
+          }
+        });
+      }
+
+      chips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const num = parseInt(chip.dataset.count, 10);
+          if (inputCount) inputCount.value = num;
+          triggerGenerate(num);
         });
       });
     }

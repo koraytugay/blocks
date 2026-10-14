@@ -40,6 +40,11 @@ Designed as an educational tool to help students and kids develop 3D spatial thi
   - **High-Contrast Styling**: 2px dark charcoal borders and neutral studio gray background for maximum visual clarity.
 - **Built-in Presets**:
   - 1 Cube, Stairs, Pyramid, 3D Cross, Spiral Tower, and Voxel Heart.
+- **🎲 Random Structure Generator**:
+  - Input any custom block count (e.g. 5, 10, 15, 25, 50, or up to 200) to generate connected 3D structures.
+  - Generates organic, contiguous 3D architectural shapes on the ground plane (towers, arches, terraces) ideal for testing architectural projections.
+  - Quick-preset chips (`5`, `10`, `15`, `25`, `50`) for one-click generation.
+  - Supports URL parameter generation (e.g. `?random=20`).
 - **Export & Import**: Save your creations to `.json` files and reload them anytime.
 - **Sound Synth**: Web Audio API synthesized pops and clicks for tactile feedback (toggleable).
 
