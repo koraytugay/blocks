@@ -1235,7 +1235,8 @@
       const y = parseInt(face.dataset.y, 10) + cfg.dy;
       const z = parseInt(face.dataset.z, 10) + cfg.dz;
       const placeColor = this.isRandomColor ? this.getRandomPaletteColor() : this.currentColor;
-      this.grid.showGhostCells(this.getBrushCells(x, y, z, face.dataset.face), placeColor);
+      const cells = this.getBrushCells(x, y, z, face.dataset.face).filter((c) => !this.grid.has(c.x, c.y, c.z));
+      this.grid.showGhostCells(cells, placeColor);
     }
 
     setupCameraButtons() {
@@ -1283,7 +1284,7 @@
     setupInteractiveBlockClicks() {
       // Hover tracking for Ghost preview block
       this.viewport.addEventListener('pointermove', (e) => {
-        if (this.camera.hasDragged || this.camera.isPointerDown) {
+        if (this.camera.isPointerDown) {
           this.hoveredFace = null;
           this.grid.hideGhost();
           return;
@@ -1348,7 +1349,9 @@
 
           if (added.length > 0) {
             // Update ghost to the next layer out from the clicked face
-            const next = cells.map((c) => ({ x: c.x + cfg.dx, y: c.y + cfg.dy, z: c.z + cfg.dz }));
+            const next = cells
+              .map((c) => ({ x: c.x + cfg.dx, y: c.y + cfg.dy, z: c.z + cfg.dz }))
+              .filter((c) => !this.grid.has(c.x, c.y, c.z));
             this.grid.showGhostCells(next, placeColor);
           }
         }
