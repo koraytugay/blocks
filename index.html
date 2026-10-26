@@ -25,18 +25,34 @@
 
     <!-- Active Mode Selector -->
     <div class="tool-group mode-selector">
-      <button class="tool-btn active" data-mode="add" id="btn-mode-add" title="Add Block (Click on any face)">
+      <button class="tool-btn active" data-mode="add" id="btn-mode-add" title="Add Block (A) - Click on any face">
         <svg viewBox="0 0 24 24" class="icon"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
         <span>Add</span>
       </button>
-      <button class="tool-btn" data-mode="delete" id="btn-mode-delete" title="Delete Block (Click block to delete / Shift+Click)">
+      <button class="tool-btn" data-mode="delete" id="btn-mode-delete" title="Delete Block (D) - Click block to delete / Shift+Click">
         <svg viewBox="0 0 24 24" class="icon"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
         <span>Delete</span>
       </button>
-      <button class="tool-btn" data-mode="paint" id="btn-mode-paint" title="Paint Block (Click block to recolor)">
+      <button class="tool-btn" data-mode="paint" id="btn-mode-paint" title="Paint Block (P) - Click block to recolor">
         <svg viewBox="0 0 24 24" class="icon"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.28 19.58 10.6 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
         <span>Paint</span>
       </button>
+    </div>
+
+    <!-- Brush Size Selector (Add tool places an N×N slab at once) -->
+    <div class="tool-group size-selector" title="Brush size: place an N×N slab of blocks per click (keys 1-4, or [ / ])">
+      <button class="tool-btn size-btn active" data-size="1">1×1</button>
+      <button class="tool-btn size-btn" data-size="2">2×2</button>
+      <button class="tool-btn size-btn" data-size="3">3×3</button>
+      <button class="tool-btn size-btn" data-size="4">4×4</button>
+    </div>
+
+    <!-- Slab Orientation Selector (O to cycle) -->
+    <div class="tool-group size-selector plane-selector" title="Slab orientation (O to cycle)">
+      <button class="tool-btn plane-btn active" data-plane="auto" title="Flat against the face you click">On face</button>
+      <button class="tool-btn plane-btn" data-plane="floor" title="Always horizontal (a floor, or a ledge sticking out of a wall)">Floor</button>
+      <button class="tool-btn plane-btn" data-plane="front" title="Vertical wall seen face-on from FRONT / BACK">Front wall</button>
+      <button class="tool-btn plane-btn" data-plane="side" title="Vertical wall seen face-on from LEFT / RIGHT">Side wall</button>
     </div>
 
     <!-- Stats & Quick Actions -->
@@ -195,6 +211,8 @@
         <div class="help-section">
           <h4>Building</h4>
           <p><strong>Add Blocks:</strong> Hover over any exposed face of a 3D block. A ghost block preview will indicate where the new cube will snap. Left click to attach!</p>
+          <p><strong>Brush Size:</strong> Pick <em>2×2</em>, <em>3×3</em> or <em>4×4</em> in the top bar (or press <span class="kbd">1</span>–<span class="kbd">4</span>, or <span class="kbd">[</span> / <span class="kbd">]</span>) to place a whole slab per click. The slab lies flat against the face you click: a <em>top</em> face gives a floor, a <em>side</em> face gives a wall that grows upward from the clicked row. The preview shows exactly where it lands, and one Undo removes the whole slab.</p>
+          <p><strong>Slab Orientation:</strong> <em>On face</em> lays the slab flat against the clicked face. For a perpendicular slab pick <em>Floor</em>, <em>Front wall</em> or <em>Side wall</em> (or press <span class="kbd">O</span> to cycle): e.g. <em>Front wall</em> on a top face stands a wall up, <em>Floor</em> on a side face sticks a ledge out.</p>
           <p><strong>Delete Blocks:</strong> Hold <span class="kbd">Shift</span> and click any block to remove it, or switch to the <em>Delete</em> tool in the top bar.</p>
           <p><strong>Paint Blocks:</strong> Select a color from the left palette and switch to the <em>Paint</em> tool to recolor existing blocks.</p>
         </div>
@@ -215,9 +233,11 @@
         <div class="help-section">
           <h4>Keyboard Shortcuts</h4>
           <ul>
-            <li><span class="kbd">1</span> Add Tool</li>
-            <li><span class="kbd">2</span> Delete Tool</li>
-            <li><span class="kbd">3</span> Paint Tool</li>
+            <li><span class="kbd">A</span> Add Tool</li>
+            <li><span class="kbd">D</span> Delete Tool</li>
+            <li><span class="kbd">P</span> Paint Tool</li>
+            <li><span class="kbd">1</span>–<span class="kbd">4</span> Brush Size (1×1 – 4×4)</li>
+            <li><span class="kbd">O</span> Cycle Slab Orientation</li>
             <li><span class="kbd">X</span> Toggle X-Ray Mode</li>
             <li><span class="kbd">H</span> Toggle Height Labels</li>
             <li><span class="kbd">Ctrl</span>+<span class="kbd">Z</span> Undo</li>

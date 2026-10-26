@@ -70,9 +70,12 @@ Then open your browser at **`http://localhost:8088`**.
 
 | Shortcut | Action |
 | :--- | :--- |
-| `1` | Add Block Tool |
-| `2` | Delete Block Tool |
-| `3` | Paint Block Tool |
+| `A` | Add Block Tool |
+| `D` | Delete Block Tool |
+| `P` | Paint Block Tool |
+| `1` – `4` | Brush Size (1×1 – 4×4 slab per click) |
+| `[` / `]` | Smaller / Bigger Brush |
+| `O` | Cycle Slab Orientation (On face → Floor → Front wall → Side wall) |
 | `Shift + Click` | Delete Block |
 | `X` | Toggle X-Ray Mode |
 | `H` | Toggle Height Elevation Labels |

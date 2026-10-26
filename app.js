@@ -542,7 +542,7 @@
       return { cube, faces };
     }
 
-    addBlock(x, y, z, color = '#ffffff', isUndoRedo = false, animate = true) {
+    insertBlock(x, y, z, color, animate) {
       const k = this.key(x, y, z);
       if (this.blocks.has(k)) return false;
 
@@ -554,6 +554,39 @@
 
       // Update neighbor occlusions
       this.updateOcclusionForBlock(block, true);
+      return true;
+    }
+
+    // Add several blocks as a single undoable action (one sound, one undo step)
+    addBlocks(list, isUndoRedo = false, animate = true) {
+      const added = list.filter((b) => this.insertBlock(b.x, b.y, b.z, b.color, animate));
+      if (added.length === 0) return [];
+
+      if (!isUndoRedo) {
+        this.undoStack.push({ type: 'multi', blocks: added.map(({ x, y, z, color }) => ({ x, y, z, color })) });
+        this.redoStack = [];
+        this.notifyHistory();
+      }
+
+      this.sound.playAdd();
+      this.notifyCount();
+      return added;
+    }
+
+    removeBlocks(list) {
+      list.forEach((b) => {
+        const block = this.get(b.x, b.y, b.z);
+        if (!block) return;
+        this.updateOcclusionForBlock(block, false);
+        if (block.cube.parentNode) block.cube.parentNode.removeChild(block.cube);
+        this.blocks.delete(this.key(b.x, b.y, b.z));
+      });
+      this.sound.playDelete();
+      this.notifyCount();
+    }
+
+    addBlock(x, y, z, color = '#ffffff', isUndoRedo = false, animate = true) {
+      if (!this.insertBlock(x, y, z, color, animate)) return false;
 
       if (!isUndoRedo) {
         this.undoStack.push({ type: 'add', x, y, z, color });
@@ -654,6 +687,9 @@
       } else if (action.type === 'bulk') {
         this.loadState(action.prevBlocks, true);
         this.redoStack.push(action);
+      } else if (action.type === 'multi') {
+        this.removeBlocks(action.blocks);
+        this.redoStack.push(action);
       }
 
       this.notifyHistory();
@@ -674,6 +710,9 @@
         this.undoStack.push(action);
       } else if (action.type === 'bulk') {
         this.loadState(action.newBlocks, true);
+        this.undoStack.push(action);
+      } else if (action.type === 'multi') {
+        this.addBlocks(action.blocks, true, false);
         this.undoStack.push(action);
       }
 
@@ -775,16 +814,33 @@
 
     // Ghost Block preview positioning
     showGhostAt(x, y, z, color) {
-      this.ghostEl.classList.remove('hidden');
-      const px = x * CUBE_SIZE;
-      const py = -y * CUBE_SIZE;
-      const pz = z * CUBE_SIZE;
-      this.ghostEl.style.transform = `translate3d(${px}px, ${py}px, ${pz}px)`;
-      this.ghostEl.style.setProperty('--ghost-color', color);
+      this.showGhostCells([{ x, y, z }], color);
+    }
+
+    // Preview several cells at once; extra ghost elements are cloned from the original on demand
+    showGhostCells(cells, color) {
+      if (!this.ghostPool) this.ghostPool = [this.ghostEl];
+      while (this.ghostPool.length < cells.length) {
+        const clone = this.ghostEl.cloneNode(true);
+        clone.removeAttribute('id');
+        this.ghostEl.parentNode.appendChild(clone);
+        this.ghostPool.push(clone);
+      }
+
+      this.ghostPool.forEach((el, i) => {
+        const cell = cells[i];
+        if (!cell) {
+          el.classList.add('hidden');
+          return;
+        }
+        el.classList.remove('hidden');
+        el.style.transform = `translate3d(${cell.x * CUBE_SIZE}px, ${-cell.y * CUBE_SIZE}px, ${cell.z * CUBE_SIZE}px)`;
+        el.style.setProperty('--ghost-color', color);
+      });
     }
 
     hideGhost() {
-      this.ghostEl.classList.add('hidden');
+      (this.ghostPool || [this.ghostEl]).forEach((el) => el.classList.add('hidden'));
     }
   }
 
@@ -816,6 +872,8 @@
       this.currentMode = 'add'; // 'add', 'delete', 'paint'
       this.currentColor = PALETTE_COLORS[0];
       this.isRandomColor = false;
+      this.brushSize = 1; // N×N slab placed per click in add mode
+      this.brushPlane = 'auto'; // 'auto' (flat on clicked face), 'floor' (XZ), 'front' (XY), 'side' (YZ)
 
       // Subsystems
       this.sound = new SoundManager();
@@ -1057,6 +1115,14 @@
         });
       });
 
+      document.querySelectorAll('.size-selector .size-btn').forEach((btn) => {
+        btn.addEventListener('click', () => this.setBrushSize(parseInt(btn.dataset.size, 10)));
+      });
+
+      document.querySelectorAll('.plane-selector .plane-btn').forEach((btn) => {
+        btn.addEventListener('click', () => this.setBrushPlane(btn.dataset.plane));
+      });
+
       this.btnUndo.addEventListener('click', () => this.grid.undo());
       this.btnRedo.addEventListener('click', () => this.grid.redo());
 
@@ -1095,15 +1161,81 @@
       });
     }
 
+    // Cells covered by an N×N slab placed against the clicked face.
+    // The slab plane is either flat on the face ('auto') or a fixed plane: floor (XZ), front wall (XY), side wall (YZ).
+    // Per slab axis: the face-normal axis extends outward from the face, Y grows upward from the clicked row,
+    // and any other axis is centered on the target cell (even sizes extend one more toward +x / +z).
+    getBrushCells(tx, ty, tz, faceName) {
+      const n = this.brushSize;
+      const cfg = FACES_CONFIG[faceName];
+      const normal = { x: cfg.dx, y: cfg.dy, z: cfg.dz };
+      const normalAxis = cfg.dx ? 'x' : cfg.dy ? 'y' : 'z';
+      const planes = { floor: ['x', 'z'], front: ['x', 'y'], side: ['z', 'y'] };
+      const axes = planes[this.brushPlane] || ['x', 'y', 'z'].filter((a) => a !== normalAxis);
+
+      const offsets = (axis) => {
+        const list = [];
+        for (let i = 0; i < n; i++) {
+          if (axis === normalAxis) list.push(i * normal[axis]);
+          else if (axis === 'y') list.push(i);
+          else list.push(i - Math.floor((n - 1) / 2));
+        }
+        return list;
+      };
+
+      const cells = [];
+      for (const a of offsets(axes[0])) {
+        for (const b of offsets(axes[1])) {
+          const cell = { x: tx, y: ty, z: tz };
+          cell[axes[0]] += a;
+          cell[axes[1]] += b;
+          cells.push(cell);
+        }
+      }
+      return cells;
+    }
+
+    setBrushPlane(plane) {
+      this.brushPlane = plane;
+      document.querySelectorAll('.plane-selector .plane-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.plane === plane);
+      });
+      if (this.currentMode !== 'add') this.setMode('add');
+      this.refreshGhost();
+    }
+
+    setBrushSize(size) {
+      this.brushSize = Math.max(1, Math.min(4, size));
+      document.querySelectorAll('.size-selector .size-btn').forEach((btn) => {
+        btn.classList.toggle('active', parseInt(btn.dataset.size, 10) === this.brushSize);
+      });
+      if (this.currentMode !== 'add') this.setMode('add');
+      this.refreshGhost();
+    }
+
     setMode(mode) {
       this.currentMode = mode;
       document.body.dataset.activeMode = mode;
       document.querySelectorAll('.mode-selector .tool-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.mode === mode);
       });
-      if (mode !== 'add') {
+      this.refreshGhost();
+    }
+
+    // Redraw the preview for the face under the cursor (e.g. after a size, orientation or mode change
+    // while the mouse is not moving)
+    refreshGhost() {
+      const face = this.hoveredFace;
+      if (!face || !face.isConnected || this.currentMode !== 'add') {
         this.grid.hideGhost();
+        return;
       }
+      const cfg = FACES_CONFIG[face.dataset.face];
+      const x = parseInt(face.dataset.x, 10) + cfg.dx;
+      const y = parseInt(face.dataset.y, 10) + cfg.dy;
+      const z = parseInt(face.dataset.z, 10) + cfg.dz;
+      const placeColor = this.isRandomColor ? this.getRandomPaletteColor() : this.currentColor;
+      this.grid.showGhostCells(this.getBrushCells(x, y, z, face.dataset.face), placeColor);
     }
 
     setupCameraButtons() {
@@ -1152,32 +1284,18 @@
       // Hover tracking for Ghost preview block
       this.viewport.addEventListener('pointermove', (e) => {
         if (this.camera.hasDragged || this.camera.isPointerDown) {
+          this.hoveredFace = null;
           this.grid.hideGhost();
           return;
         }
 
         const face = e.target.closest('.face');
-        if (face && this.currentMode === 'add') {
-          const x = parseInt(face.dataset.x, 10);
-          const y = parseInt(face.dataset.y, 10);
-          const z = parseInt(face.dataset.z, 10);
-          const faceName = face.dataset.face;
-          const cfg = FACES_CONFIG[faceName];
-
-          if (cfg) {
-            const targetX = x + cfg.dx;
-            const targetY = y + cfg.dy;
-            const targetZ = z + cfg.dz;
-
-            const placeColor = this.isRandomColor ? this.getRandomPaletteColor() : this.currentColor;
-            this.grid.showGhostAt(targetX, targetY, targetZ, placeColor);
-          }
-        } else {
-          this.grid.hideGhost();
-        }
+        this.hoveredFace = face && FACES_CONFIG[face.dataset.face] ? face : null;
+        this.refreshGhost();
       });
 
       this.viewport.addEventListener('pointerleave', () => {
+        this.hoveredFace = null;
         this.grid.hideGhost();
       });
 
@@ -1221,16 +1339,17 @@
           const cfg = FACES_CONFIG[faceName];
           if (!cfg) return;
 
-          const targetX = x + cfg.dx;
-          const targetY = y + cfg.dy;
-          const targetZ = z + cfg.dz;
-
+          const cells = this.getBrushCells(x + cfg.dx, y + cfg.dy, z + cfg.dz, faceName);
           const placeColor = this.isRandomColor ? this.getRandomPaletteColor() : this.currentColor;
-          const added = this.grid.addBlock(targetX, targetY, targetZ, placeColor);
+          const added = this.grid.addBlocks(cells.map((c) => ({
+            ...c,
+            color: this.isRandomColor ? this.getRandomPaletteColor() : this.currentColor
+          })));
 
-          if (added) {
-            // Update ghost to next position
-            this.grid.showGhostAt(targetX + cfg.dx, targetY + cfg.dy, targetZ + cfg.dz, placeColor);
+          if (added.length > 0) {
+            // Update ghost to the next layer out from the clicked face
+            const next = cells.map((c) => ({ x: c.x + cfg.dx, y: c.y + cfg.dy, z: c.z + cfg.dz }));
+            this.grid.showGhostCells(next, placeColor);
           }
         }
       });
@@ -1521,11 +1640,20 @@
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
           e.preventDefault();
           this.grid.redo();
-        } else if (e.key === '1') {
+        } else if (e.key === '[') {
+          this.setBrushSize(this.brushSize - 1);
+        } else if (e.key === ']') {
+          this.setBrushSize(this.brushSize + 1);
+        } else if (e.key.toLowerCase() === 'o') {
+          const order = ['auto', 'floor', 'front', 'side'];
+          this.setBrushPlane(order[(order.indexOf(this.brushPlane) + 1) % order.length]);
+        } else if (['1', '2', '3', '4'].includes(e.key)) {
+          this.setBrushSize(parseInt(e.key, 10));
+        } else if (e.key.toLowerCase() === 'a') {
           this.setMode('add');
-        } else if (e.key === '2') {
+        } else if (e.key.toLowerCase() === 'd') {
           this.setMode('delete');
-        } else if (e.key === '3') {
+        } else if (e.key.toLowerCase() === 'p') {
           this.setMode('paint');
         } else if (e.key.toLowerCase() === 'x') {
           const isXray = this.viewport.classList.toggle('xray-mode');
