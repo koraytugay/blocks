@@ -78,6 +78,7 @@ Then open your browser at **`http://localhost:8088`**.
 | `1` – `4` | Brush Size (1×1 – 4×4 slab per click) |
 | `[` / `]` | Smaller / Bigger Brush |
 | `O` | Cycle Slab Orientation (On face → Floor → Front wall → Side wall) |
+| `Q` / `E` | Rotate 90° CCW / CW (Top & Bottom Plan Views) |
 | `G` | Toggle Inner Grids / Seamless Blocks |
 | `W` / `C` | Toggle White Mode (Disable Colors Temporarily) |
 | `Shift + Click` | Delete Block |

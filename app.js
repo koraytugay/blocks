@@ -184,6 +184,7 @@
 
       // Pinch zoom tracking
       this.projectionMode = 'perspective'; // 'perspective' or 'ortho'
+      this.currentPreset = 'iso';
       this.onProjectionChange = null;
 
       // 3D Orientation ViewCube Gizmo
@@ -397,6 +398,7 @@
     }
 
     setViewPreset(preset, bounds = null) {
+      this.currentPreset = preset;
       if (preset === 'top') {
         this.viewport.classList.add('arch-top');
       } else {
@@ -488,6 +490,37 @@
             this.targetPanY = 0;
           }
           break;
+      }
+    }
+
+    // Rotates the Top or Bottom 2D plan view by 90 degrees around the structure center.
+    // dir: +1 for clockwise (↷), -1 for counter-clockwise (↶)
+    rotatePlan90(dir = 1, bounds = null) {
+      const isTop = (this.currentPreset === 'top' || Math.round(this.targetRotX) === -90);
+      const isBottom = (this.currentPreset === 'bottom' || Math.round(this.targetRotX) === 90);
+      if (!isTop && !isBottom) return;
+
+      const delta = (isTop ? -dir : dir) * 90;
+      this.targetRotY = Math.round((this.targetRotY + delta) / 90) * 90;
+
+      if (bounds) {
+        const rad = (this.targetRotY * Math.PI) / 180;
+        const cx = bounds.centerX;
+        const cz = bounds.centerZ;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        if (isTop) {
+          const sx = cx * cos + cz * sin;
+          const sy = -cx * sin + cz * cos;
+          this.targetPanX = -sx;
+          this.targetPanY = -sy;
+        } else if (isBottom) {
+          const sx = cx * cos + cz * sin;
+          const sy = cx * sin - cz * cos;
+          this.targetPanX = -sx;
+          this.targetPanY = -sy;
+        }
       }
     }
 
@@ -989,6 +1022,11 @@
       this.btnHeights = document.getElementById('btn-heights');
       this.archBanner = document.getElementById('arch-banner');
       this.archBannerTitle = document.getElementById('arch-banner-title');
+      this.archRotateControls = document.getElementById('arch-rotate-controls');
+      this.btnArchRotateCCW = document.getElementById('btn-arch-rotate-ccw');
+      this.btnArchRotateCW = document.getElementById('btn-arch-rotate-cw');
+      this.btnCamRotateCCW = document.getElementById('btn-cam-rotate-ccw');
+      this.btnCamRotateCW = document.getElementById('btn-cam-rotate-cw');
       this.btnExitArch = document.getElementById('btn-exit-arch');
 
       // State
@@ -1038,6 +1076,7 @@
       this.camera.onProjectionChange = (mode) => {
         if (mode === 'perspective') {
           this.archBanner.classList.add('hidden');
+          this.updateRotateControlsVisibility('iso');
           const activePill = document.querySelector('.pill-btn.active');
           if (activePill && activePill.dataset.view !== 'iso') {
             document.querySelectorAll('.pill-btn').forEach((p) => p.classList.remove('active'));
@@ -1297,7 +1336,26 @@
         const isoPill = document.querySelector('.pill-btn[data-view="iso"]');
         if (isoPill) isoPill.classList.add('active');
         this.archBanner.classList.add('hidden');
+        this.updateRotateControlsVisibility('iso');
       });
+    }
+
+    rotatePlan(dir) {
+      this.camera.rotatePlan90(dir, this.grid.getBounds());
+      this.updateCompassPositions();
+    }
+
+    updateRotateControlsVisibility(view) {
+      const isPlan = (view === 'top' || view === 'bottom');
+      if (this.archRotateControls) {
+        this.archRotateControls.classList.toggle('hidden', !isPlan);
+      }
+      if (this.btnCamRotateCCW) {
+        this.btnCamRotateCCW.classList.toggle('hidden', !isPlan);
+      }
+      if (this.btnCamRotateCW) {
+        this.btnCamRotateCW.classList.toggle('hidden', !isPlan);
+      }
     }
 
     toggleSeamless(force) {
@@ -1414,6 +1472,19 @@
         btnAuto.classList.toggle('active', active);
       });
 
+      if (this.btnArchRotateCCW) {
+        this.btnArchRotateCCW.addEventListener('click', () => this.rotatePlan(-1));
+      }
+      if (this.btnArchRotateCW) {
+        this.btnArchRotateCW.addEventListener('click', () => this.rotatePlan(1));
+      }
+      if (this.btnCamRotateCCW) {
+        this.btnCamRotateCCW.addEventListener('click', () => this.rotatePlan(-1));
+      }
+      if (this.btnCamRotateCW) {
+        this.btnCamRotateCW.addEventListener('click', () => this.rotatePlan(1));
+      }
+
       const pills = document.querySelectorAll('.pill-btn');
       pills.forEach((pill) => {
         pill.addEventListener('click', () => {
@@ -1422,6 +1493,7 @@
           const view = pill.dataset.view;
           this.camera.setViewPreset(view, this.grid.getBounds());
           this.updateCompassPositions();
+          this.updateRotateControlsVisibility(view);
 
           if (view === 'iso') {
             this.archBanner.classList.add('hidden');
@@ -1819,6 +1891,10 @@
           this.setMode('delete');
         } else if (e.key.toLowerCase() === 'p') {
           this.setMode('paint');
+        } else if (e.key.toLowerCase() === 'q') {
+          this.rotatePlan(-1);
+        } else if (e.key.toLowerCase() === 'e') {
+          this.rotatePlan(1);
         } else if (e.key.toLowerCase() === 'g') {
           this.toggleSeamless();
         } else if (e.key.toLowerCase() === 'w' || (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey)) {

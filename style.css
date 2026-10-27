@@ -441,6 +441,41 @@ body[data-active-mode="paint"] .cube:hover .face {
   color: #f8fafc;
 }
 
+.arch-rotate-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px;
+}
+
+.arch-btn-rotate {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.arch-btn-rotate .icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.arch-btn-rotate:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  transform: translateY(-1px);
+}
+
 .arch-btn-switch {
   background: rgba(56, 189, 248, 0.15);
   border: 1px solid rgba(56, 189, 248, 0.45);

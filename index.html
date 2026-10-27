@@ -173,6 +173,12 @@
         <svg viewBox="0 0 24 24" class="icon"><path d="M19 13H5v-2h14v2z"/></svg>
       </button>
       <div class="cam-divider"></div>
+      <button class="cam-btn hidden" id="btn-cam-rotate-ccw" title="Rotate 90° Counter-Clockwise (Q)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.88-1.6-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.01L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c3.37 0 6.09 2.72 6.09 6.09s-2.72 6.09-6.09 6.09c-.89 0-1.74-.2-2.51-.55l-1.5 1.5c1.23.66 2.64 1.05 4.01 1.05 5.02 0 9.09-4.07 9.09-9.09S18.02 4.07 13 4.07z"/></svg>
+      </button>
+      <button class="cam-btn hidden" id="btn-cam-rotate-cw" title="Rotate 90° Clockwise (E)">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M15.55 5.55L11 1v3.07C5.98 4.07 1.91 8.14 1.91 13.16s4.07 9.09 9.09 9.09c1.37 0 2.78-.39 4.01-1.05l-1.5-1.5c-.77.35-1.62.55-2.51.55-3.37 0-6.09-2.72-6.09-6.09s2.72-6.09 6.09-6.09V10l4.55-4.45zM19.93 11h-2.02c-.14-.87-.49-1.72-1.02-2.47l1.41-1.42c.9 1.16 1.45 2.5 1.63 3.89zm-2.02 2c.13.87.49 1.72 1.01 2.47l1.41 1.42c.9-1.16 1.45-2.5 1.62-3.89h-2.02zm-5.01 4.9c.87-.15 1.71-.49 2.46-1.01l1.42 1.42c-1.16.9-2.51 1.44-3.88 1.61V17.9z"/></svg>
+      </button>
       <button class="cam-btn" id="btn-recenter" title="Recenter View & Focus (R)">
         <svg viewBox="0 0 24 24" class="icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
       </button>
@@ -245,6 +251,7 @@
             <li><span class="kbd">P</span> Paint Tool</li>
             <li><span class="kbd">1</span>–<span class="kbd">4</span> Brush Size (1×1 – 4×4)</li>
             <li><span class="kbd">O</span> Cycle Slab Orientation</li>
+            <li><span class="kbd">Q</span> / <span class="kbd">E</span> Rotate 90° CCW / CW (Top & Bottom Views)</li>
             <li><span class="kbd">G</span> Toggle Inner Grids / Seamless Blocks</li>
             <li><span class="kbd">W</span> / <span class="kbd">C</span> Toggle White Mode (Disable Colors)</li>
             <li><span class="kbd">X</span> Toggle X-Ray Mode</li>
@@ -268,6 +275,19 @@
     <div id="arch-banner" class="arch-banner hidden">
       <span class="arch-badge">📐 2D ARCHITECTURE VIEW</span>
       <span id="arch-banner-title" class="arch-title">Top Plan</span>
+      
+      <!-- 90° Rotate controls in Top & Bottom views -->
+      <div id="arch-rotate-controls" class="arch-rotate-controls hidden">
+        <button id="btn-arch-rotate-ccw" class="arch-btn-rotate" title="Rotate 90° Counter-Clockwise (Q)">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.88-1.6-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.01L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c3.37 0 6.09 2.72 6.09 6.09s-2.72 6.09-6.09 6.09c-.89 0-1.74-.2-2.51-.55l-1.5 1.5c1.23.66 2.64 1.05 4.01 1.05 5.02 0 9.09-4.07 9.09-9.09S18.02 4.07 13 4.07z"/></svg>
+          <span>↶ 90°</span>
+        </button>
+        <button id="btn-arch-rotate-cw" class="arch-btn-rotate" title="Rotate 90° Clockwise (E)">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M15.55 5.55L11 1v3.07C5.98 4.07 1.91 8.14 1.91 13.16s4.07 9.09 9.09 9.09c1.37 0 2.78-.39 4.01-1.05l-1.5-1.5c-.77.35-1.62.55-2.51.55-3.37 0-6.09-2.72-6.09-6.09s2.72-6.09 6.09-6.09V10l4.55-4.45zM19.93 11h-2.02c-.14-.87-.49-1.72-1.02-2.47l1.41-1.42c.9 1.16 1.45 2.5 1.63 3.89zm-2.02 2c.13.87.49 1.72 1.01 2.47l1.41 1.42c.9-1.16 1.45-2.5 1.62-3.89h-2.02zm-5.01 4.9c.87-.15 1.71-.49 2.46-1.01l1.42 1.42c-1.16.9-2.51 1.44-3.88 1.61V17.9z"/></svg>
+          <span>↷ 90°</span>
+        </button>
+      </div>
+
       <button id="btn-exit-arch" class="arch-btn-switch" title="Return to 3D Orbit">Orbit 3D</button>
     </div>
 
