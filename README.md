@@ -35,9 +35,11 @@ Designed as an educational tool to help students and kids develop 3D spatial thi
   - **Interactive 3D ViewCube**: A synchronized orientation cube in the top-right corner rotates with the camera in real time. Click any face to snap flat, or drag the ViewCube to rotate.
   - **Bidirectional Hover Highlights**: Hovering over any 2D view button pulses the corresponding 3D ground arrow and ViewCube face before clicking.
 - **Educational Tools**:
+  - **Seamless Blocks (`G`)**: Inner grids between adjacent coplanar blocks are hidden by default, merging connected cubes into a single seamless piece. Blocks remain cleanly distinguished by color.
+  - **White Mode / Disable Colors (`W` / `C`)**: Temporarily renders all blocks pure white (like an architectural massing sculpture) while preserving underlying color assignments.
   - **X-Ray Mode (`X`)**: Make blocks translucent to see interior and lower floors.
   - **Height Labels (`H`)**: Toggle elevation height markers (`H:0`, `H:1`, `H:2`...) on cubes.
-  - **High-Contrast Styling**: 2px dark charcoal borders and neutral studio gray background for maximum visual clarity.
+  - **High-Contrast Styling**: 2px dark charcoal perimeter borders and neutral studio gray background for maximum visual clarity.
 - **Built-in Presets**:
   - 1 Cube, Stairs, Pyramid, 3D Cross, Spiral Tower, and Voxel Heart.
 - **🎲 Random Structure Generator**:
@@ -76,6 +78,8 @@ Then open your browser at **`http://localhost:8088`**.
 | `1` – `4` | Brush Size (1×1 – 4×4 slab per click) |
 | `[` / `]` | Smaller / Bigger Brush |
 | `O` | Cycle Slab Orientation (On face → Floor → Front wall → Side wall) |
+| `G` | Toggle Inner Grids / Seamless Blocks |
+| `W` / `C` | Toggle White Mode (Disable Colors Temporarily) |
 | `Shift + Click` | Delete Block |
 | `X` | Toggle X-Ray Mode |
 | `H` | Toggle Height Elevation Labels |

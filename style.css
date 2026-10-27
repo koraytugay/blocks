@@ -205,6 +205,74 @@ html, body {
   backface-visibility: visible !important;
 }
 
+/* -------------------------------------------------------------
+   Seamless Mode (Invisible Inner Grids, Single Piece Look)
+   ------------------------------------------------------------- */
+#viewport.seamless-mode .cube:not(.ghost-cube) .face {
+  box-shadow: none !important;
+}
+
+#viewport.seamless-mode .cube:not(.ghost-cube) .face.no-border-top {
+  border-top: none !important;
+}
+
+#viewport.seamless-mode .cube:not(.ghost-cube) .face.no-border-bottom {
+  border-bottom: none !important;
+}
+
+#viewport.seamless-mode .cube:not(.ghost-cube) .face.no-border-left {
+  border-left: none !important;
+}
+
+#viewport.seamless-mode .cube:not(.ghost-cube) .face.no-border-right {
+  border-right: none !important;
+}
+
+/* 2D Architectural Projection in Seamless Mode */
+#viewport.arch-view.seamless-mode .cube:not(.ghost-cube) .face {
+  box-shadow: none !important;
+}
+
+#viewport.arch-view.seamless-mode .cube:not(.ghost-cube) .face.no-border-top {
+  border-top: none !important;
+}
+
+#viewport.arch-view.seamless-mode .cube:not(.ghost-cube) .face.no-border-bottom {
+  border-bottom: none !important;
+}
+
+#viewport.arch-view.seamless-mode .cube:not(.ghost-cube) .face.no-border-left {
+  border-left: none !important;
+}
+
+#viewport.arch-view.seamless-mode .cube:not(.ghost-cube) .face.no-border-right {
+  border-right: none !important;
+}
+
+/* Hover overrides in Seamless Mode: clearly highlight the hovered face/block */
+body[data-active-mode="add"] #viewport.seamless-mode .face:hover {
+  border: 2px solid #2563eb !important;
+  box-shadow: inset 0 0 0 2px #2563eb, 0 0 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+body[data-active-mode="delete"] #viewport.seamless-mode .cube:hover .face {
+  border: 2px solid #991b1b !important;
+  box-shadow: inset 0 0 0 2px #991b1b, 0 0 16px rgba(239, 68, 68, 0.4) !important;
+}
+
+body[data-active-mode="paint"] #viewport.seamless-mode .cube:hover .face {
+  border: 2px solid #0284c7 !important;
+  box-shadow: inset 0 0 0 2px #0284c7, 0 0 15px rgba(2, 132, 199, 0.4) !important;
+}
+
+/* -------------------------------------------------------------
+   White Mode / Temporarily Disable Colors
+   ------------------------------------------------------------- */
+#viewport.white-mode .cube:not(.ghost-cube) .face {
+  --block-color: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
 /* Elevation Height Tag inside faces - Dark, crisp, readable on white */
 .height-tag {
   display: none;

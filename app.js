@@ -19,6 +19,66 @@
     bottom: { dx: 0,  dy: -1, dz: 0,  opposite: 'top' },
   };
 
+  // 3D neighbor offsets for the 4 2D edges (top, bottom, right, left) of each face.
+  // When an adjacent neighbor exists in that edge direction with an unoccluded coplanar face,
+  // the inner border on that edge is removed so connected blocks look like a single piece.
+  const FACE_EDGES_CONFIG = {
+    front: {
+      normal: { dx: 0, dy: 0, dz: 1 },
+      edges: {
+        top:    { dx: 0, dy: 1, dz: 0 },
+        bottom: { dx: 0, dy: -1, dz: 0 },
+        right:  { dx: 1, dy: 0, dz: 0 },
+        left:   { dx: -1, dy: 0, dz: 0 },
+      }
+    },
+    back: {
+      normal: { dx: 0, dy: 0, dz: -1 },
+      edges: {
+        top:    { dx: 0, dy: 1, dz: 0 },
+        bottom: { dx: 0, dy: -1, dz: 0 },
+        right:  { dx: -1, dy: 0, dz: 0 },
+        left:   { dx: 1, dy: 0, dz: 0 },
+      }
+    },
+    right: {
+      normal: { dx: 1, dy: 0, dz: 0 },
+      edges: {
+        top:    { dx: 0, dy: 1, dz: 0 },
+        bottom: { dx: 0, dy: -1, dz: 0 },
+        right:  { dx: 0, dy: 0, dz: -1 },
+        left:   { dx: 0, dy: 0, dz: 1 },
+      }
+    },
+    left: {
+      normal: { dx: -1, dy: 0, dz: 0 },
+      edges: {
+        top:    { dx: 0, dy: 1, dz: 0 },
+        bottom: { dx: 0, dy: -1, dz: 0 },
+        right:  { dx: 0, dy: 0, dz: 1 },
+        left:   { dx: 0, dy: 0, dz: -1 },
+      }
+    },
+    top: {
+      normal: { dx: 0, dy: 1, dz: 0 },
+      edges: {
+        top:    { dx: 0, dy: 0, dz: -1 },
+        bottom: { dx: 0, dy: 0, dz: 1 },
+        right:  { dx: 1, dy: 0, dz: 0 },
+        left:   { dx: -1, dy: 0, dz: 0 },
+      }
+    },
+    bottom: {
+      normal: { dx: 0, dy: -1, dz: 0 },
+      edges: {
+        top:    { dx: 0, dy: 0, dz: 1 },
+        bottom: { dx: 0, dy: 0, dz: -1 },
+        right:  { dx: 1, dy: 0, dz: 0 },
+        left:   { dx: -1, dy: 0, dz: 0 },
+      }
+    },
+  };
+
   const PALETTE_COLORS = [
     '#ffffff', // Pure White (Default)
     '#3b82f6', // Electric Blue
@@ -554,6 +614,7 @@
 
       // Update neighbor occlusions
       this.updateOcclusionForBlock(block, true);
+      this.updateNeighborhoodBorders(x, y, z);
       return true;
     }
 
@@ -568,6 +629,7 @@
         this.notifyHistory();
       }
 
+      this.updateAllBorders();
       this.sound.playAdd();
       this.notifyCount();
       return added;
@@ -581,6 +643,7 @@
         if (block.cube.parentNode) block.cube.parentNode.removeChild(block.cube);
         this.blocks.delete(this.key(b.x, b.y, b.z));
       });
+      this.updateAllBorders();
       this.sound.playDelete();
       this.notifyCount();
     }
@@ -614,6 +677,7 @@
         block.cube.parentNode.removeChild(block.cube);
       }
       this.blocks.delete(k);
+      this.updateNeighborhoodBorders(x, y, z);
 
       if (!isUndoRedo) {
         this.undoStack.push({ type: 'delete', x, y, z, color: oldColor });
@@ -668,6 +732,56 @@
             faces[faceName].classList.remove('hidden');
           }
         }
+      }
+    }
+
+    // Updates edge border classes (no-border-top/bottom/left/right) on faces
+    // so coplanar adjacent blocks merge into a single seamless piece.
+    updateBlockBorders(block) {
+      if (!block) return;
+      const { x, y, z, faces } = block;
+
+      for (const [faceName, config] of Object.entries(FACE_EDGES_CONFIG)) {
+        const faceEl = faces[faceName];
+        if (!faceEl) continue;
+
+        for (const [edgeName, dir] of Object.entries(config.edges)) {
+          const className = `no-border-${edgeName}`;
+          // Coplanar neighbor must exist
+          const nx = x + dir.dx;
+          const ny = y + dir.dy;
+          const nz = z + dir.dz;
+          const neighbor = this.get(nx, ny, nz);
+
+          if (neighbor) {
+            // Neighbor must not be occluded by a protruding block in front of this face
+            const bx = nx + config.normal.dx;
+            const by = ny + config.normal.dy;
+            const bz = nz + config.normal.dz;
+            if (!this.has(bx, by, bz)) {
+              faceEl.classList.add(className);
+              continue;
+            }
+          }
+          faceEl.classList.remove(className);
+        }
+      }
+    }
+
+    updateNeighborhoodBorders(cx, cy, cz) {
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dz = -1; dz <= 1; dz++) {
+            const b = this.get(cx + dx, cy + dy, cz + dz);
+            if (b) this.updateBlockBorders(b);
+          }
+        }
+      }
+    }
+
+    updateAllBorders() {
+      for (const block of this.blocks.values()) {
+        this.updateBlockBorders(block);
       }
     }
 
@@ -774,6 +888,8 @@
         }
       }
 
+      this.updateAllBorders();
+
       this.notifyCount();
     }
 
@@ -862,6 +978,8 @@
       this.soundIconOff = document.getElementById('sound-icon-off');
       this.emptyStarter = document.getElementById('empty-starter');
 
+      this.btnSeamless = document.getElementById('btn-seamless');
+      this.btnWhiteMode = document.getElementById('btn-white-mode');
       this.btnXray = document.getElementById('btn-xray');
       this.btnHeights = document.getElementById('btn-heights');
       this.archBanner = document.getElementById('arch-banner');
@@ -872,6 +990,8 @@
       this.currentMode = 'add'; // 'add', 'delete', 'paint'
       this.currentColor = PALETTE_COLORS[0];
       this.isRandomColor = false;
+      this.isSeamless = true; // Inner grids hidden by default (blocks look like a single piece)
+      this.isWhiteMode = false; // When true, all blocks render pure white (colors disabled temporarily)
       this.brushSize = 1; // N×N slab placed per click in add mode
       this.brushPlane = 'auto'; // 'auto' (flat on clicked face), 'floor' (XZ), 'front' (XY), 'side' (YZ)
 
@@ -1139,6 +1259,20 @@
         this.soundIconOff.classList.toggle('hidden', this.sound.enabled);
       });
 
+      // Seamless Blocks / Inner Grids Toggle (Hide inner borders so blocks look like a single piece)
+      if (this.btnSeamless) {
+        this.btnSeamless.addEventListener('click', () => {
+          this.toggleSeamless();
+        });
+      }
+
+      // White Mode / Disable Colors Toggle (Temporarily make all blocks white)
+      if (this.btnWhiteMode) {
+        this.btnWhiteMode.addEventListener('click', () => {
+          this.toggleWhiteMode();
+        });
+      }
+
       // X-Ray Mode Toggle
       this.btnXray.addEventListener('click', () => {
         const isXray = this.viewport.classList.toggle('xray-mode');
@@ -1159,6 +1293,28 @@
         if (isoPill) isoPill.classList.add('active');
         this.archBanner.classList.add('hidden');
       });
+    }
+
+    toggleSeamless(force) {
+      this.isSeamless = typeof force === 'boolean' ? force : !this.isSeamless;
+      this.viewport.classList.toggle('seamless-mode', this.isSeamless);
+      if (this.btnSeamless) {
+        this.btnSeamless.classList.toggle('active', this.isSeamless);
+        this.btnSeamless.title = this.isSeamless
+          ? 'Toggle Inner Grids (G) - Currently Hidden (Seamless Single Piece)'
+          : 'Toggle Inner Grids (G) - Currently Visible';
+      }
+    }
+
+    toggleWhiteMode(force) {
+      this.isWhiteMode = typeof force === 'boolean' ? force : !this.isWhiteMode;
+      this.viewport.classList.toggle('white-mode', this.isWhiteMode);
+      if (this.btnWhiteMode) {
+        this.btnWhiteMode.classList.toggle('active', this.isWhiteMode);
+        this.btnWhiteMode.title = this.isWhiteMode
+          ? 'Restore Colors (W) - Currently in White Mode'
+          : 'Disable Colors / White Mode (W) - Temporarily make all blocks white';
+      }
     }
 
     // Cells covered by an N×N slab placed against the clicked face.
@@ -1658,6 +1814,10 @@
           this.setMode('delete');
         } else if (e.key.toLowerCase() === 'p') {
           this.setMode('paint');
+        } else if (e.key.toLowerCase() === 'g') {
+          this.toggleSeamless();
+        } else if (e.key.toLowerCase() === 'w' || (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey)) {
+          this.toggleWhiteMode();
         } else if (e.key.toLowerCase() === 'x') {
           const isXray = this.viewport.classList.toggle('xray-mode');
           this.btnXray.classList.toggle('active', isXray);
