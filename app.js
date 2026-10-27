@@ -148,6 +148,14 @@
     playPaint() {
       this.playPop(520, 520, 0.06);
     }
+
+    playCorrect() {
+      this.playPop(440, 880, 0.15);
+    }
+
+    playWrong() {
+      this.playPop(260, 140, 0.22);
+    }
   }
 
   // --- Camera Controller (Orbit, Zoom, Pan, Presets) ---
@@ -998,6 +1006,484 @@
     }
   }
 
+  // --- Quiz Mode Manager (Spatial Reasoning & Architectural Projections) ---
+  class QuizManager {
+    constructor(app) {
+      this.app = app;
+      this.grid = app.grid;
+      this.camera = app.camera;
+      this.sound = app.sound;
+
+      this.active = false;
+      this.savedScene = null;
+      this.currentBlocks = null;
+      this.currentQuestion = null;
+
+      this.score = 0;
+      this.total = 0;
+      this.streak = 0;
+      this.questionNum = 1;
+
+      // Elements
+      this.btnToggle = document.getElementById('btn-quiz-mode');
+      this.panel = document.getElementById('quiz-panel');
+      this.btnClose = document.getElementById('btn-exit-quiz');
+      this.qNumEl = document.getElementById('quiz-q-num');
+      this.scoreEl = document.getElementById('quiz-score');
+      this.streakEl = document.getElementById('quiz-streak');
+      this.targetNameEl = document.getElementById('quiz-target-name');
+      this.optionsContainer = document.getElementById('quiz-options-container');
+      this.feedbackBox = document.getElementById('quiz-feedback-box');
+      this.feedbackContent = document.getElementById('quiz-feedback-content');
+      this.btnShow3D = document.getElementById('btn-quiz-show-3d');
+      this.btnNext = document.getElementById('btn-quiz-next');
+      this.btnNewStructure = document.getElementById('btn-quiz-new-structure');
+      this.btnSkip = document.getElementById('btn-quiz-skip');
+
+      this.setupEvents();
+    }
+
+    setupEvents() {
+      if (this.btnToggle) {
+        this.btnToggle.addEventListener('click', () => this.toggle());
+      }
+      if (this.btnClose) {
+        this.btnClose.addEventListener('click', () => this.exit());
+      }
+      if (this.btnNext) {
+        this.btnNext.addEventListener('click', () => {
+          this.questionNum++;
+          this.nextQuestion(true);
+        });
+      }
+      if (this.btnNewStructure) {
+        this.btnNewStructure.addEventListener('click', () => {
+          this.nextQuestion(true);
+        });
+      }
+      if (this.btnSkip) {
+        this.btnSkip.addEventListener('click', () => {
+          this.questionNum++;
+          this.nextQuestion(false);
+        });
+      }
+      if (this.btnShow3D) {
+        this.btnShow3D.addEventListener('click', () => {
+          if (this.currentQuestion) {
+            this.camera.setViewPreset(this.currentQuestion.targetView, this.grid.getBounds());
+          }
+        });
+      }
+    }
+
+    toggle() {
+      if (this.active) {
+        this.exit();
+      } else {
+        this.start();
+      }
+    }
+
+    start() {
+      this.active = true;
+      this.savedScene = this.grid.serialize();
+      document.body.classList.add('quiz-active');
+      if (this.btnToggle) this.btnToggle.classList.add('active');
+      if (this.panel) this.panel.classList.remove('hidden');
+
+      if (this.camera.isAutoRotating) {
+        this.camera.toggleAutoRotate();
+        const autoRotateBtn = document.getElementById('btn-auto-rotate');
+        if (autoRotateBtn) autoRotateBtn.classList.remove('active');
+      }
+
+      if (this.app.isWhiteMode) {
+        this.app.toggleWhiteMode(false);
+      }
+
+      this.score = 0;
+      this.total = 0;
+      this.streak = 0;
+      this.questionNum = 1;
+      this.updateStatsUI();
+
+      this.nextQuestion(true);
+    }
+
+    exit() {
+      this.active = false;
+      document.body.classList.remove('quiz-active');
+      if (this.btnToggle) this.btnToggle.classList.remove('active');
+      if (this.panel) this.panel.classList.add('hidden');
+
+      if (this.savedScene !== null) {
+        this.grid.loadState(this.savedScene);
+        this.camera.setViewPreset('iso', this.grid.getBounds());
+      }
+    }
+
+    createSlab(x0, y0, z0, orientation, color, id) {
+      const cubes = [];
+      const wx = orientation === 'yz' ? 1 : 4;
+      const wy = orientation === 'xz' ? 1 : 4;
+      const wz = orientation === 'xy' ? 1 : 4;
+
+      for (let dx = 0; dx < wx; dx++) {
+        for (let dy = 0; dy < wy; dy++) {
+          for (let dz = 0; dz < wz; dz++) {
+            cubes.push({ x: x0 + dx, y: y0 + dy, z: z0 + dz });
+          }
+        }
+      }
+      return { id, x0, y0, z0, orientation, wx, wy, wz, color, cubes };
+    }
+
+    slabsIntersect(s1, s2) {
+      const overlapX = Math.max(0, Math.min(s1.x0 + s1.wx, s2.x0 + s2.wx) - Math.max(s1.x0, s2.x0));
+      const overlapY = Math.max(0, Math.min(s1.y0 + s1.wy, s2.y0 + s2.wy) - Math.max(s1.y0, s2.y0));
+      const overlapZ = Math.max(0, Math.min(s1.z0 + s1.wz, s2.z0 + s2.wz) - Math.max(s1.z0, s2.z0));
+      return overlapX > 0 && overlapY > 0 && overlapZ > 0;
+    }
+
+    generateStructure(minBlocks = 3, maxBlocks = 8) {
+      const vibrantColors = [
+        '#3b82f6', '#10b981', '#ef4444', '#f59e0b',
+        '#8b5cf6', '#06b6d4', '#f97316', '#84cc16',
+        '#ec4899', '#6366f1'
+      ];
+      const colors = [...vibrantColors].sort(() => Math.random() - 0.5);
+      const count = Math.floor(Math.random() * (maxBlocks - minBlocks + 1)) + minBlocks;
+      const blocks = [];
+      const orientations = ['xz', 'xy', 'yz'];
+
+      // Start with a base slab at ground
+      const firstOri = orientations[Math.floor(Math.random() * orientations.length)];
+      blocks.push(this.createSlab(0, 0, 0, firstOri, colors[0], 1));
+
+      let attempts = 0;
+      while (blocks.length < count && attempts < 500) {
+        attempts++;
+        const base = blocks[Math.floor(Math.random() * blocks.length)];
+        const newOri = orientations[Math.floor(Math.random() * orientations.length)];
+        const nwx = newOri === 'yz' ? 1 : 4;
+        const nwy = newOri === 'xz' ? 1 : 4;
+        const nwz = newOri === 'xy' ? 1 : 4;
+
+        const faces = ['+x', '-x', '+y', '-y', '+z', '-z'];
+        const face = faces[Math.floor(Math.random() * faces.length)];
+
+        let nx = base.x0;
+        let ny = base.y0;
+        let nz = base.z0;
+
+        if (face === '+x') nx = base.x0 + base.wx;
+        else if (face === '-x') nx = base.x0 - nwx;
+        else if (face === '+y') ny = base.y0 + base.wy;
+        else if (face === '-y') ny = base.y0 - nwy;
+        else if (face === '+z') nz = base.z0 + base.wz;
+        else if (face === '-z') nz = base.z0 - nwz;
+
+        if (face === '+x' || face === '-x') {
+          ny = base.y0;
+          nz = base.z0;
+        } else if (face === '+y' || face === '-y') {
+          nx = base.x0;
+          nz = base.z0;
+        } else if (face === '+z' || face === '-z') {
+          nx = base.x0;
+          ny = base.y0;
+        }
+
+        if (ny < 0 || ny > 12) continue;
+        if (Math.abs(nx) > 16 || Math.abs(nz) > 16) continue;
+
+        const candidate = this.createSlab(nx, ny, nz, newOri, colors[blocks.length % colors.length], blocks.length + 1);
+        if (!blocks.some((b) => this.slabsIntersect(b, candidate))) {
+          blocks.push(candidate);
+        }
+      }
+      return blocks;
+    }
+
+    loadStructureIntoGrid(blocks) {
+      const cubes = [];
+      for (const b of blocks) {
+        for (const cube of b.cubes) {
+          cubes.push({
+            x: cube.x,
+            y: cube.y,
+            z: cube.z,
+            color: b.color
+          });
+        }
+      }
+      this.grid.loadState(cubes);
+      this.camera.setViewPreset('iso', this.grid.getBounds());
+    }
+
+    getProjectedGrid(blocks, view) {
+      const grid = new Map();
+      let minCx = Infinity, maxCx = -Infinity;
+      let minCy = Infinity, maxCy = -Infinity;
+
+      for (const b of blocks) {
+        for (const cube of b.cubes) {
+          const { x, y, z } = cube;
+          let cx, cy, depth;
+          switch (view) {
+            case 'top':    cx = x;  cy = z;  depth = y;  break;
+            case 'bottom': cx = x;  cy = -z; depth = -y; break;
+            case 'front':  cx = x;  cy = -y; depth = z;  break;
+            case 'back':   cx = -x; cy = -y; depth = -z; break;
+            case 'left':   cx = z;  cy = -y; depth = -x; break;
+            case 'right':  cx = -z; cy = -y; depth = x;  break;
+          }
+
+          minCx = Math.min(minCx, cx);
+          maxCx = Math.max(maxCx, cx);
+          minCy = Math.min(minCy, cy);
+          maxCy = Math.max(maxCy, cy);
+
+          const k = `${cx},${cy}`;
+          const existing = grid.get(k);
+          if (!existing || depth > existing.depth) {
+            grid.set(k, { depth, color: b.color, blockId: b.id });
+          }
+        }
+      }
+      return { grid, minCx, maxCx, minCy, maxCy };
+    }
+
+    getSignature(proj) {
+      const { grid, minCx, minCy } = proj;
+      const cells = [];
+      for (const [key, val] of grid.entries()) {
+        const [cx, cy] = key.split(',').map(Number);
+        cells.push(`${cx - minCx},${cy - minCy}:${val.blockId}`);
+      }
+      return cells.sort().join(';');
+    }
+
+    transformGrid(proj, mode) {
+      const { grid, minCx, maxCx, minCy, maxCy } = proj;
+      const transformed = new Map();
+      let rMinX = Infinity, rMaxX = -Infinity;
+      let rMinY = Infinity, rMaxY = -Infinity;
+      const w = maxCx - minCx;
+      const h = maxCy - minCy;
+
+      for (const [key, val] of grid.entries()) {
+        const [cx, cy] = key.split(',').map(Number);
+        const ox = cx - minCx;
+        const oy = cy - minCy;
+
+        let rx, ry;
+        if (mode === 90) {
+          rx = h - oy;
+          ry = ox;
+        } else if (mode === 180) {
+          rx = w - ox;
+          ry = h - oy;
+        } else if (mode === 270) {
+          rx = oy;
+          ry = w - ox;
+        } else if (mode === 'flipH') {
+          rx = w - ox;
+          ry = oy;
+        } else if (mode === 'flipV') {
+          rx = ox;
+          ry = h - oy;
+        }
+
+        rMinX = Math.min(rMinX, rx);
+        rMaxX = Math.max(rMaxX, rx);
+        rMinY = Math.min(rMinY, ry);
+        rMaxY = Math.max(rMaxY, ry);
+        transformed.set(`${rx},${ry}`, { ...val });
+      }
+
+      return { grid: transformed, minCx: rMinX, maxCx: rMaxX, minCy: rMinY, maxCy: rMaxY };
+    }
+
+    renderSVG(proj, maxBox = 110) {
+      const { grid, minCx, maxCx, minCy, maxCy } = proj;
+      const cols = maxCx - minCx + 1;
+      const rows = maxCy - minCy + 1;
+      const cellSize = Math.min(18, Math.max(5, Math.floor((maxBox - 12) / Math.max(cols, rows))));
+      const pad = 6;
+      const svgW = cols * cellSize + pad * 2;
+      const svgH = rows * cellSize + pad * 2;
+
+      let rects = '';
+      let borders = '';
+
+      for (const [key, val] of grid.entries()) {
+        const [cx, cy] = key.split(',').map(Number);
+        const x = pad + (cx - minCx) * cellSize;
+        const y = pad + (cy - minCy) * cellSize;
+
+        rects += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="${val.color}" shape-rendering="crispEdges"/>`;
+
+        const topKey = `${cx},${cy - 1}`;
+        const botKey = `${cx},${cy + 1}`;
+        const leftKey = `${cx - 1},${cy}`;
+        const rightKey = `${cx + 1},${cy}`;
+
+        const topDiff = !grid.has(topKey) || grid.get(topKey).blockId !== val.blockId;
+        const botDiff = !grid.has(botKey) || grid.get(botKey).blockId !== val.blockId;
+        const leftDiff = !grid.has(leftKey) || grid.get(leftKey).blockId !== val.blockId;
+        const rightDiff = !grid.has(rightKey) || grid.get(rightKey).blockId !== val.blockId;
+
+        if (topDiff) borders += `<line x1="${x}" y1="${y}" x2="${x + cellSize}" y2="${y}" stroke="rgba(15,23,42,0.85)" stroke-width="1.8"/>`;
+        if (botDiff) borders += `<line x1="${x}" y1="${y + cellSize}" x2="${x + cellSize}" y2="${y + cellSize}" stroke="rgba(15,23,42,0.85)" stroke-width="1.8"/>`;
+        if (leftDiff) borders += `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + cellSize}" stroke="rgba(15,23,42,0.85)" stroke-width="1.8"/>`;
+        if (rightDiff) borders += `<line x1="${x + cellSize}" y1="${y}" x2="${x + cellSize}" y2="${y + cellSize}" stroke="rgba(15,23,42,0.85)" stroke-width="1.8"/>`;
+      }
+
+      return `<svg viewBox="0 0 ${svgW} ${svgH}" width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg">${rects}${borders}</svg>`;
+    }
+
+    nextQuestion(newStructure = true) {
+      if (newStructure || !this.currentBlocks) {
+        this.currentBlocks = this.generateStructure(3, 8);
+        this.loadStructureIntoGrid(this.currentBlocks);
+      }
+
+      const views = [
+        { id: 'top', name: 'TOP VIEW (Plan)' },
+        { id: 'bottom', name: 'BOTTOM VIEW' },
+        { id: 'front', name: 'FRONT ELEVATION' },
+        { id: 'back', name: 'BACK ELEVATION' },
+        { id: 'right', name: 'RIGHT SIDE VIEW' },
+        { id: 'left', name: 'LEFT SIDE VIEW' },
+      ];
+
+      const target = views[Math.floor(Math.random() * views.length)];
+      const correctProj = this.getProjectedGrid(this.currentBlocks, target.id);
+      const correctSig = this.getSignature(correctProj);
+
+      // Distractor candidates pool
+      const candidateProjs = [
+        this.transformGrid(correctProj, 90),
+        this.transformGrid(correctProj, 180),
+        this.transformGrid(correctProj, 270),
+        this.transformGrid(correctProj, 'flipH'),
+        this.transformGrid(correctProj, 'flipV'),
+      ];
+
+      for (const v of views) {
+        if (v.id !== target.id) {
+          const otherProj = this.getProjectedGrid(this.currentBlocks, v.id);
+          candidateProjs.push(otherProj);
+          candidateProjs.push(this.transformGrid(otherProj, 90));
+          candidateProjs.push(this.transformGrid(otherProj, 'flipH'));
+        }
+      }
+
+      const distractorPool = [];
+      const seen = new Set([correctSig]);
+      for (const cand of candidateProjs) {
+        const sig = this.getSignature(cand);
+        if (!seen.has(sig)) {
+          seen.add(sig);
+          distractorPool.push(cand);
+        }
+      }
+
+      distractorPool.sort(() => Math.random() - 0.5);
+      const distractors = distractorPool.slice(0, 3);
+
+      const rawOptions = [
+        { proj: correctProj, isCorrect: true },
+        { proj: distractors[0], isCorrect: false },
+        { proj: distractors[1], isCorrect: false },
+        { proj: distractors[2], isCorrect: false },
+      ];
+
+      rawOptions.sort(() => Math.random() - 0.5);
+      const correctIndex = rawOptions.findIndex((o) => o.isCorrect);
+
+      this.currentQuestion = {
+        targetView: target.id,
+        targetName: target.name,
+        options: rawOptions,
+        correctIndex,
+        answered: false
+      };
+
+      if (this.targetNameEl) this.targetNameEl.textContent = target.name;
+      if (this.feedbackBox) this.feedbackBox.classList.add('hidden');
+      this.updateStatsUI();
+
+      this.renderOptionsGrid();
+    }
+
+    renderOptionsGrid() {
+      if (!this.optionsContainer || !this.currentQuestion) return;
+      this.optionsContainer.innerHTML = '';
+
+      const letters = ['A', 'B', 'C', 'D'];
+      this.currentQuestion.options.forEach((opt, idx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-opt-card';
+        card.dataset.index = idx;
+
+        const badge = document.createElement('span');
+        badge.className = 'quiz-opt-letter';
+        badge.textContent = letters[idx];
+        card.appendChild(badge);
+
+        const svgHtml = this.renderSVG(opt.proj);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = svgHtml;
+        card.appendChild(wrapper.firstChild);
+
+        card.addEventListener('click', () => this.handleOptionClick(idx, card));
+        this.optionsContainer.appendChild(card);
+      });
+    }
+
+    handleOptionClick(choiceIndex, cardEl) {
+      if (!this.currentQuestion || this.currentQuestion.answered) return;
+      this.currentQuestion.answered = true;
+      this.total++;
+
+      const isCorrect = choiceIndex === this.currentQuestion.correctIndex;
+      const cards = this.optionsContainer.querySelectorAll('.quiz-opt-card');
+      cards.forEach((c) => c.classList.add('disabled'));
+
+      if (isCorrect) {
+        this.score++;
+        this.streak++;
+        cardEl.classList.add('is-correct');
+        if (this.sound) this.sound.playCorrect();
+        this.showFeedback(true, '🎉 Correct! That is the exact projection.');
+      } else {
+        this.streak = 0;
+        cardEl.classList.add('is-wrong');
+        const correctCard = cards[this.currentQuestion.correctIndex];
+        if (correctCard) correctCard.classList.add('is-correct');
+        if (this.sound) this.sound.playWrong();
+        this.showFeedback(false, '❌ Not quite. Click "Show in 3D" to rotate the model and see why!');
+      }
+
+      this.updateStatsUI();
+    }
+
+    showFeedback(isCorrect, message) {
+      if (!this.feedbackBox || !this.feedbackContent) return;
+      this.feedbackBox.className = 'quiz-feedback-box ' + (isCorrect ? 'feedback-correct' : 'feedback-wrong');
+      this.feedbackContent.textContent = message;
+      this.feedbackBox.classList.remove('hidden');
+    }
+
+    updateStatsUI() {
+      if (this.qNumEl) this.qNumEl.textContent = `#${this.questionNum}`;
+      if (this.scoreEl) this.scoreEl.textContent = `${this.score} / ${this.total}`;
+      if (this.streakEl) this.streakEl.textContent = `🔥 ${this.streak}`;
+    }
+  }
+
   // --- Main Application Controller ---
   class App {
     constructor() {
@@ -1044,6 +1530,7 @@
       this.camera = new CameraController(this.viewport, this.world, (cam) => {
         this.zoomIndicator.textContent = Math.round(cam.targetZoom * 100) + '%';
       });
+      this.quiz = new QuizManager(this);
 
       this.init();
     }
@@ -1517,6 +2004,11 @@
     setupInteractiveBlockClicks() {
       // Hover tracking for Ghost preview block
       this.viewport.addEventListener('pointermove', (e) => {
+        if (this.quiz && this.quiz.active) {
+          this.hoveredFace = null;
+          this.grid.hideGhost();
+          return;
+        }
         if (this.camera.isPointerDown) {
           this.hoveredFace = null;
           this.grid.hideGhost();
@@ -1535,6 +2027,7 @@
 
       // Click handling on blocks
       this.viewport.addEventListener('pointerup', (e) => {
+        if (this.quiz && this.quiz.active) return;
         // If it was a drag, ignore click
         if (this.camera.hasDragged) return;
 
@@ -1865,6 +2358,13 @@
       window.addEventListener('keydown', (e) => {
         // Prevent hotkeys when typing in input
         if (e.target.tagName === 'INPUT') return;
+
+        if (e.key === 'Escape') {
+          if (this.quiz && this.quiz.active) {
+            this.quiz.exit();
+            return;
+          }
+        }
 
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
           e.preventDefault();

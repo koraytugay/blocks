@@ -55,6 +55,14 @@
       <button class="tool-btn plane-btn" data-plane="side" title="Vertical wall seen face-on from LEFT / RIGHT">Side wall</button>
     </div>
 
+    <!-- Quiz Mode Toggle Button -->
+    <div class="tool-group quiz-group">
+      <button class="tool-btn quiz-nav-btn" id="btn-quiz-mode" title="Quiz Mode - Spatial reasoning & 2D view projection challenges">
+        <svg viewBox="0 0 24 24" class="icon"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+        <span>Quiz</span>
+      </button>
+    </div>
+
     <!-- Stats & Quick Actions -->
     <div class="stats-group">
       <div class="stat-badge" title="Total blocks in the scene">
@@ -367,6 +375,74 @@
       <span>Click to place starting block</span>
     </button>
   </main>
+
+  <!-- Quiz Mode Floating Right Panel -->
+  <aside class="quiz-panel hidden" id="quiz-panel">
+    <div class="quiz-card">
+      <div class="quiz-header">
+        <div class="quiz-badge">
+          <span class="quiz-badge-icon">🎓</span>
+          <span class="quiz-badge-title">SPATIAL REASONING QUIZ</span>
+        </div>
+        <button class="quiz-close-btn" id="btn-exit-quiz" title="Exit Quiz Mode">&times;</button>
+      </div>
+
+      <div class="quiz-stats-row">
+        <div class="quiz-stat-item">
+          <span class="q-label">Question:</span>
+          <span class="q-val" id="quiz-q-num">#1</span>
+        </div>
+        <div class="quiz-stat-item">
+          <span class="q-label">Score:</span>
+          <span class="q-val" id="quiz-score">0 / 0</span>
+        </div>
+        <div class="quiz-stat-item">
+          <span class="q-label">Streak:</span>
+          <span class="q-val q-streak" id="quiz-streak">🔥 0</span>
+        </div>
+      </div>
+
+      <div class="quiz-question-box">
+        <div class="quiz-target-pill" id="quiz-target-pill">
+          <span class="target-dot"></span>
+          <span id="quiz-target-name">TOP VIEW (Plan)</span>
+        </div>
+        <h3 class="quiz-prompt-text" id="quiz-prompt-text">
+          Which option shows the correct view from this perspective?
+        </h3>
+        <p class="quiz-hint-text">
+          Drag to orbit the 3D model on the left to inspect from any angle!
+        </p>
+      </div>
+
+      <div class="quiz-options-grid" id="quiz-options-container">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="quiz-feedback-box hidden" id="quiz-feedback-box">
+        <div class="quiz-feedback-content" id="quiz-feedback-content">
+          <!-- Feedback message -->
+        </div>
+        <div class="quiz-feedback-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-quiz-show-3d" title="Glide camera directly to this view in 3D">
+            📐 Show in 3D
+          </button>
+          <button class="btn btn-primary btn-sm" id="btn-quiz-next">
+            Next Challenge ➔
+          </button>
+        </div>
+      </div>
+
+      <div class="quiz-footer-actions">
+        <button class="quiz-ghost-btn" id="btn-quiz-new-structure" title="Generate another random structure">
+          🎲 New Structure
+        </button>
+        <button class="quiz-ghost-btn" id="btn-quiz-skip" title="Skip to next question">
+          Skip ➔
+        </button>
+      </div>
+    </div>
+  </aside>
 
   <!-- Audio elements generated via Web Audio API in app.js -->
   <script src="app.js"></script>
