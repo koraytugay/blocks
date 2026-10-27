@@ -273,6 +273,40 @@ body[data-active-mode="paint"] #viewport.seamless-mode .cube:hover .face {
   background-color: #ffffff !important;
 }
 
+/* In White Mode, blocks that had different colors must be separated by borders */
+#viewport.white-mode .cube:not(.ghost-cube) .face.diff-color-top {
+  border-top: 2px solid #0f172a !important;
+}
+
+#viewport.white-mode .cube:not(.ghost-cube) .face.diff-color-bottom {
+  border-bottom: 2px solid #0f172a !important;
+}
+
+#viewport.white-mode .cube:not(.ghost-cube) .face.diff-color-left {
+  border-left: 2px solid #0f172a !important;
+}
+
+#viewport.white-mode .cube:not(.ghost-cube) .face.diff-color-right {
+  border-right: 2px solid #0f172a !important;
+}
+
+/* 2D Architectural Projection in White Mode */
+#viewport.arch-view.white-mode .cube:not(.ghost-cube) .face.diff-color-top {
+  border-top: 2.5px solid #0f172a !important;
+}
+
+#viewport.arch-view.white-mode .cube:not(.ghost-cube) .face.diff-color-bottom {
+  border-bottom: 2.5px solid #0f172a !important;
+}
+
+#viewport.arch-view.white-mode .cube:not(.ghost-cube) .face.diff-color-left {
+  border-left: 2.5px solid #0f172a !important;
+}
+
+#viewport.arch-view.white-mode .cube:not(.ghost-cube) .face.diff-color-right {
+  border-right: 2.5px solid #0f172a !important;
+}
+
 /* Elevation Height Tag inside faces - Dark, crisp, readable on white */
 .height-tag {
   display: none;

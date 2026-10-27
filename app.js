@@ -697,6 +697,7 @@
       const oldColor = block.color;
       block.color = newColor;
       block.cube.style.setProperty('--block-color', newColor);
+      this.updateNeighborhoodBorders(x, y, z);
 
       if (!isUndoRedo) {
         this.undoStack.push({ type: 'paint', x, y, z, oldColor, newColor });
@@ -735,18 +736,22 @@
       }
     }
 
-    // Updates edge border classes (no-border-top/bottom/left/right) on faces
-    // so coplanar adjacent blocks merge into a single seamless piece.
+    // Updates edge border classes on faces:
+    // - no-border-* removes inner grids so connected blocks look like a single piece.
+    // - diff-color-* marks edges between blocks of DIFFERENT colors so they can be separated
+    //   by borders when colors are temporarily disabled in White Mode.
     updateBlockBorders(block) {
       if (!block) return;
-      const { x, y, z, faces } = block;
+      const { x, y, z, faces, color } = block;
 
       for (const [faceName, config] of Object.entries(FACE_EDGES_CONFIG)) {
         const faceEl = faces[faceName];
         if (!faceEl) continue;
 
         for (const [edgeName, dir] of Object.entries(config.edges)) {
-          const className = `no-border-${edgeName}`;
+          const noBorderClass = `no-border-${edgeName}`;
+          const diffColorClass = `diff-color-${edgeName}`;
+
           // Coplanar neighbor must exist
           const nx = x + dir.dx;
           const ny = y + dir.dy;
@@ -759,11 +764,17 @@
             const by = ny + config.normal.dy;
             const bz = nz + config.normal.dz;
             if (!this.has(bx, by, bz)) {
-              faceEl.classList.add(className);
+              faceEl.classList.add(noBorderClass);
+              if (neighbor.color !== color) {
+                faceEl.classList.add(diffColorClass);
+              } else {
+                faceEl.classList.remove(diffColorClass);
+              }
               continue;
             }
           }
-          faceEl.classList.remove(className);
+          faceEl.classList.remove(noBorderClass);
+          faceEl.classList.remove(diffColorClass);
         }
       }
     }
