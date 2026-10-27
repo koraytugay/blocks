@@ -737,9 +737,10 @@
     }
 
     // Updates edge border classes on faces:
-    // - no-border-* removes inner grids so connected blocks look like a single piece.
-    // - diff-color-* marks edges between blocks of DIFFERENT colors so they can be separated
-    //   by borders when colors are temporarily disabled in White Mode.
+    // - When a coplanar neighbor has the SAME color, no-border-* is added so
+    //   connected blocks of the same color merge into a single seamless piece.
+    // - When neighbors have DIFFERENT colors (or empty space), the outer border
+    //   is kept so borders per block/piece always remain distinct.
     updateBlockBorders(block) {
       if (!block) return;
       const { x, y, z, faces, color } = block;
@@ -750,7 +751,6 @@
 
         for (const [edgeName, dir] of Object.entries(config.edges)) {
           const noBorderClass = `no-border-${edgeName}`;
-          const diffColorClass = `diff-color-${edgeName}`;
 
           // Coplanar neighbor must exist
           const nx = x + dir.dx;
@@ -758,23 +758,17 @@
           const nz = z + dir.dz;
           const neighbor = this.get(nx, ny, nz);
 
-          if (neighbor) {
-            // Neighbor must not be occluded by a protruding block in front of this face
+          if (neighbor && neighbor.color === color) {
+            // Neighbor of the SAME color must not be occluded by a protruding block in front of this face
             const bx = nx + config.normal.dx;
             const by = ny + config.normal.dy;
             const bz = nz + config.normal.dz;
             if (!this.has(bx, by, bz)) {
               faceEl.classList.add(noBorderClass);
-              if (neighbor.color !== color) {
-                faceEl.classList.add(diffColorClass);
-              } else {
-                faceEl.classList.remove(diffColorClass);
-              }
               continue;
             }
           }
           faceEl.classList.remove(noBorderClass);
-          faceEl.classList.remove(diffColorClass);
         }
       }
     }
