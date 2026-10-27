@@ -79,20 +79,61 @@
     },
   };
 
+  // --- Preset Color Palette (20 distinct, logically categorized colors) ---
   const PALETTE_COLORS = [
-    '#ffffff', // Pure White (Default)
-    '#3b82f6', // Electric Blue
+    // Row 1: Structural & Neutrals
+    '#ffffff', // Pure White
+    '#94a3b8', // Silver Gray
+    '#475569', // Slate Gray
+    '#b45309', // Warm Terracotta
+
+    // Row 2: Reds & Warm Tones
+    '#ef4444', // Crimson Red
+    '#fb7185', // Coral Rose
+    '#f97316', // Flame Orange
+    '#f59e0b', // Amber Gold
+
+    // Row 3: Yellows & Greens
+    '#facc15', // Canary Yellow
+    '#84cc16', // Lime Chartreuse
     '#10b981', // Emerald Green
-    '#ef4444', // Ruby Red
-    '#f59e0b', // Amber Orange
-    '#8b5cf6', // Violet
-    '#06b6d4', // Cyan
-    '#f97316', // Orange
-    '#84cc16', // Lime
-    '#ec4899', // Pink
-    '#6366f1', // Indigo
-    '#475569', // Slate
+    '#047857', // Pine Green
+
+    // Row 4: Cyans & Blues
+    '#06b6d4', // Electric Cyan
+    '#0ea5e9', // Sky Blue
+    '#2563eb', // Royal Cobalt
+    '#4338ca', // Deep Indigo
+
+    // Row 5: Purples & Pinks
+    '#7c3aed', // Royal Violet
+    '#c084fc', // Lavender
+    '#d946ef', // Hot Magenta
+    '#ec4899', // Bubblegum Pink
   ];
+
+  const PALETTE_NAMES = {
+    '#ffffff': 'Pure White',
+    '#94a3b8': 'Silver Gray',
+    '#475569': 'Slate Gray',
+    '#b45309': 'Warm Terracotta',
+    '#ef4444': 'Crimson Red',
+    '#fb7185': 'Coral Rose',
+    '#f97316': 'Flame Orange',
+    '#f59e0b': 'Amber Gold',
+    '#facc15': 'Canary Yellow',
+    '#84cc16': 'Lime Chartreuse',
+    '#10b981': 'Emerald Green',
+    '#047857': 'Pine Green',
+    '#06b6d4': 'Electric Cyan',
+    '#0ea5e9': 'Sky Blue',
+    '#2563eb': 'Royal Cobalt',
+    '#4338ca': 'Deep Indigo',
+    '#7c3aed': 'Royal Violet',
+    '#c084fc': 'Lavender',
+    '#d946ef': 'Hot Magenta',
+    '#ec4899': 'Bubblegum Pink',
+  };
 
   // --- Sound FX via Web Audio API (Vanilla Synth) ---
   class SoundManager {
@@ -1146,11 +1187,8 @@
     }
 
     generateStructure(minBlocks = 3, maxBlocks = 8) {
-      const vibrantColors = [
-        '#3b82f6', '#10b981', '#ef4444', '#f59e0b',
-        '#8b5cf6', '#06b6d4', '#f97316', '#84cc16',
-        '#ec4899', '#6366f1'
-      ];
+      // Pick from vibrant chromatic colors in the palette (excluding pure white)
+      const vibrantColors = PALETTE_COLORS.filter((c) => c !== '#ffffff');
       const colors = [...vibrantColors].sort(() => Math.random() - 0.5);
       const count = Math.floor(Math.random() * (maxBlocks - minBlocks + 1)) + minBlocks;
       const blocks = [];
@@ -1720,7 +1758,8 @@
         swatch.className = 'swatch' + (idx === 0 ? ' active' : '');
         swatch.style.backgroundColor = color;
         swatch.dataset.color = color;
-        swatch.title = color;
+        const colorName = PALETTE_NAMES[color] || color;
+        swatch.title = `${colorName} (${color})`;
 
         swatch.addEventListener('click', () => {
           this.setColor(color);
