@@ -629,8 +629,94 @@
       this.undoStack = [];
       this.redoStack = [];
 
+      // Section Cut Configuration
+      this.cutConfig = {
+        enabled: false,
+        axis: 'y', // 'y' | 'x' | 'z'
+        value: 0,
+        mode: 'above', // 'above' | 'below' | 'slice'
+      };
+
       this.onCountChange = null;
       this.onHistoryChange = null;
+    }
+
+    setCutConfig(cfg) {
+      this.cutConfig = { ...this.cutConfig, ...cfg };
+      return this.applyCut();
+    }
+
+    isBlockCut(x, y, z) {
+      if (!this.cutConfig || !this.cutConfig.enabled) return false;
+      const val = this.cutConfig.axis === 'x' ? x : (this.cutConfig.axis === 'y' ? y : z);
+      const target = this.cutConfig.value;
+      if (this.cutConfig.mode === 'above') {
+        return val > target;
+      } else if (this.cutConfig.mode === 'below') {
+        return val < target;
+      } else if (this.cutConfig.mode === 'slice') {
+        return val !== target;
+      }
+      return false;
+    }
+
+    getCoordinateRanges() {
+      if (this.blocks.size === 0) {
+        return {
+          x: { min: 0, max: 0 },
+          y: { min: 0, max: 0 },
+          z: { min: 0, max: 0 },
+        };
+      }
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+      let minZ = Infinity, maxZ = -Infinity;
+      for (const b of this.blocks.values()) {
+        if (b.x < minX) minX = b.x;
+        if (b.x > maxX) maxX = b.x;
+        if (b.y < minY) minY = b.y;
+        if (b.y > maxY) maxY = b.y;
+        if (b.z < minZ) minZ = b.z;
+        if (b.z > maxZ) maxZ = b.z;
+      }
+      return {
+        x: { min: minX, max: maxX },
+        y: { min: minY, max: maxY },
+        z: { min: minZ, max: maxZ },
+      };
+    }
+
+    applyCut() {
+      let visibleCount = 0;
+      for (const block of this.blocks.values()) {
+        const cut = this.isBlockCut(block.x, block.y, block.z);
+        if (cut) {
+          block.cube.classList.add('cut-hidden');
+        } else {
+          block.cube.classList.remove('cut-hidden');
+          visibleCount++;
+        }
+      }
+
+      // Recalculate face occlusions considering only visible (uncut) blocks
+      for (const block of this.blocks.values()) {
+        if (this.isBlockCut(block.x, block.y, block.z)) continue;
+
+        for (const [faceName, cfg] of Object.entries(FACES_CONFIG)) {
+          const nx = block.x + cfg.dx;
+          const ny = block.y + cfg.dy;
+          const nz = block.z + cfg.dz;
+          const neighbor = this.get(nx, ny, nz);
+          if (neighbor && !this.isBlockCut(nx, ny, nz)) {
+            block.faces[faceName].classList.add('hidden');
+          } else {
+            block.faces[faceName].classList.remove('hidden');
+          }
+        }
+      }
+
+      this.updateAllBorders();
+      return { visibleCount, totalCount: this.blocks.size };
     }
 
     key(x, y, z) {
@@ -711,7 +797,11 @@
         this.notifyHistory();
       }
 
-      this.updateAllBorders();
+      if (this.cutConfig && this.cutConfig.enabled) {
+        this.applyCut();
+      } else {
+        this.updateAllBorders();
+      }
       this.sound.playAdd();
       this.notifyCount();
       return added;
@@ -725,7 +815,11 @@
         if (block.cube.parentNode) block.cube.parentNode.removeChild(block.cube);
         this.blocks.delete(this.key(b.x, b.y, b.z));
       });
-      this.updateAllBorders();
+      if (this.cutConfig && this.cutConfig.enabled) {
+        this.applyCut();
+      } else {
+        this.updateAllBorders();
+      }
       this.sound.playDelete();
       this.notifyCount();
     }
@@ -739,6 +833,9 @@
         this.notifyHistory();
       }
 
+      if (this.cutConfig && this.cutConfig.enabled) {
+        this.applyCut();
+      }
       this.sound.playAdd();
       this.notifyCount();
       return true;
@@ -767,6 +864,9 @@
         this.notifyHistory();
       }
 
+      if (this.cutConfig && this.cutConfig.enabled) {
+        this.applyCut();
+      }
       this.sound.playDelete();
       this.notifyCount();
       return true;
@@ -834,18 +934,18 @@
         for (const [edgeName, dir] of Object.entries(config.edges)) {
           const noBorderClass = `no-border-${edgeName}`;
 
-          // Coplanar neighbor must exist
+          // Coplanar neighbor must exist and not be cut
           const nx = x + dir.dx;
           const ny = y + dir.dy;
           const nz = z + dir.dz;
           const neighbor = this.get(nx, ny, nz);
 
-          if (neighbor && neighbor.color === color) {
-            // Neighbor of the SAME color must not be occluded by a protruding block in front of this face
+          if (neighbor && !this.isBlockCut(nx, ny, nz) && neighbor.color === color) {
+            // Neighbor of the SAME color must not be occluded by a protruding visible block in front of this face
             const bx = nx + config.normal.dx;
             const by = ny + config.normal.dy;
             const bz = nz + config.normal.dz;
-            if (!this.has(bx, by, bz)) {
+            if (!this.has(bx, by, bz) || this.isBlockCut(bx, by, bz)) {
               faceEl.classList.add(noBorderClass);
               continue;
             }
@@ -975,7 +1075,11 @@
         }
       }
 
-      this.updateAllBorders();
+      if (this.cutConfig && this.cutConfig.enabled) {
+        this.applyCut();
+      } else {
+        this.updateAllBorders();
+      }
 
       this.notifyCount();
     }
@@ -1140,6 +1244,10 @@
 
       if (this.app.isWhiteMode) {
         this.app.toggleWhiteMode(false);
+      }
+
+      if (this.app.isSectionCutActive) {
+        this.app.toggleSectionCut(false);
       }
 
       this.score = 0;
@@ -1553,6 +1661,20 @@
       this.btnCamRotateCW = document.getElementById('btn-cam-rotate-cw');
       this.btnExitArch = document.getElementById('btn-exit-arch');
 
+      // Section Cut Elements
+      this.btnSectionCut = document.getElementById('btn-section-cut');
+      this.sectionCutBar = document.getElementById('section-cut-bar');
+      this.sectionPlane = document.getElementById('section-plane');
+      this.sectionPlaneSurface = this.sectionPlane ? this.sectionPlane.querySelector('.section-plane-surface') : null;
+      this.sectionPlaneBadge = document.getElementById('section-plane-badge');
+      this.cutSlider = document.getElementById('cut-slider');
+      this.cutCoordBadge = document.getElementById('cut-coord-badge');
+      this.btnCutStepDown = document.getElementById('btn-cut-step-down');
+      this.btnCutStepUp = document.getElementById('btn-cut-step-up');
+      this.btnCutPlaneToggle = document.getElementById('btn-cut-plane-toggle');
+      this.btnCutReset = document.getElementById('btn-cut-reset');
+      this.btnCutClose = document.getElementById('btn-cut-close');
+
       // State
       this.currentMode = 'add'; // 'add', 'delete', 'paint'
       this.currentColor = PALETTE_COLORS[0];
@@ -1561,6 +1683,13 @@
       this.isWhiteMode = false; // When true, all blocks render pure white (colors disabled temporarily)
       this.brushSize = 1; // N×N slab placed per click in add mode
       this.brushPlane = 'auto'; // 'auto' (flat on clicked face), 'floor' (XZ), 'front' (XY), 'side' (YZ)
+
+      // Section Cut State
+      this.isSectionCutActive = false;
+      this.showSectionPlane = true;
+      this.sectionAxis = 'y'; // 'y' | 'x' | 'z'
+      this.sectionMode = 'above'; // 'above' | 'below' | 'slice'
+      this.sectionValue = 0;
 
       // Subsystems
       this.sound = new SoundManager();
@@ -1578,13 +1707,22 @@
 
       // Setup Subsystem Callbacks
       this.grid.onCountChange = (count) => {
-        this.blockCountEl.textContent = count;
+        if (this.isSectionCutActive && this.grid.cutConfig && this.grid.cutConfig.enabled) {
+          const { visibleCount } = this.grid.applyCut();
+          this.blockCountEl.textContent = `${visibleCount} / ${count}`;
+        } else {
+          this.blockCountEl.textContent = count;
+        }
         if (count === 0) {
           this.emptyStarter.classList.remove('hidden');
         } else {
           this.emptyStarter.classList.add('hidden');
         }
         this.updateCompassPositions();
+        if (this.isSectionCutActive) {
+          this.updateSectionCutRanges(false);
+          this.updateSectionPlaneVisualizer();
+        }
       };
 
       this.emptyStarter.addEventListener('click', () => {
@@ -1601,6 +1739,7 @@
       this.camera.onProjectionChange = (mode) => {
         if (mode === 'perspective') {
           this.archBanner.classList.add('hidden');
+          this.viewport.classList.remove('has-arch-banner');
           this.updateRotateControlsVisibility('iso');
           const activePill = document.querySelector('.pill-btn.active');
           if (activePill && activePill.dataset.view !== 'iso') {
@@ -1618,6 +1757,7 @@
       this.setupRandomGenerator();
       this.setupExportImport();
       this.setupInteractiveBlockClicks();
+      this.setupSectionCut();
       this.setupKeyboardShortcuts();
       this.setupHelpModal();
       this.setupDirectionIndicators();
@@ -1862,6 +2002,7 @@
         const isoPill = document.querySelector('.pill-btn[data-view="iso"]');
         if (isoPill) isoPill.classList.add('active');
         this.archBanner.classList.add('hidden');
+        this.viewport.classList.remove('has-arch-banner');
         this.updateRotateControlsVisibility('iso');
       });
     }
@@ -2023,8 +2164,10 @@
 
           if (view === 'iso') {
             this.archBanner.classList.add('hidden');
+            this.viewport.classList.remove('has-arch-banner');
           } else {
             this.archBanner.classList.remove('hidden');
+            this.viewport.classList.add('has-arch-banner');
             const titles = {
               top: 'Top Plan (View from Above)',
               bottom: 'Bottom View (View from Below)',
@@ -2393,12 +2536,291 @@
       });
     }
 
+    setupSectionCut() {
+      if (!this.btnSectionCut) return;
+
+      this.btnSectionCut.addEventListener('click', () => {
+        this.toggleSectionCut();
+      });
+
+      if (this.btnCutClose) {
+        this.btnCutClose.addEventListener('click', () => {
+          this.toggleSectionCut(false);
+        });
+      }
+
+      if (this.btnCutReset) {
+        this.btnCutReset.addEventListener('click', () => {
+          this.grid.setCutConfig({ enabled: false });
+          this.isSectionCutActive = false;
+          this.btnSectionCut.classList.remove('active');
+          if (this.sectionPlane) this.sectionPlane.classList.add('hidden');
+          this.btnCutReset.classList.add('active');
+          this.blockCountEl.textContent = this.grid.blocks.size;
+          this.sound.playPop(300, 450, 0.08);
+        });
+      }
+
+      // Axis pills
+      const axisPills = document.querySelectorAll('.cut-axis-pills .cut-pill-btn');
+      axisPills.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          axisPills.forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.sectionAxis = btn.dataset.axis;
+          this.updateSectionCutRanges(true);
+          this.applySectionCut();
+          this.sound.playPop(420, 560, 0.05);
+        });
+      });
+
+      // Mode pills
+      const modePills = document.querySelectorAll('.cut-mode-pills .cut-pill-btn');
+      modePills.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          modePills.forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.sectionMode = btn.dataset.mode;
+          this.applySectionCut();
+          this.sound.playPop(460, 520, 0.05);
+        });
+      });
+
+      // Cut coordinate range slider
+      if (this.cutSlider) {
+        this.cutSlider.addEventListener('input', (e) => {
+          this.sectionValue = parseInt(e.target.value, 10);
+          this.applySectionCut();
+        });
+      }
+
+      // Step buttons
+      if (this.btnCutStepDown) {
+        this.btnCutStepDown.addEventListener('click', () => {
+          const min = parseInt(this.cutSlider.min, 10);
+          if (this.sectionValue > min) {
+            this.sectionValue--;
+            this.cutSlider.value = this.sectionValue;
+            this.applySectionCut();
+            this.sound.playPop(380, 420, 0.04);
+          }
+        });
+      }
+
+      if (this.btnCutStepUp) {
+        this.btnCutStepUp.addEventListener('click', () => {
+          const max = parseInt(this.cutSlider.max, 10);
+          if (this.sectionValue < max) {
+            this.sectionValue++;
+            this.cutSlider.value = this.sectionValue;
+            this.applySectionCut();
+            this.sound.playPop(420, 480, 0.04);
+          }
+        });
+      }
+
+      // Plane Guide Toggle
+      if (this.btnCutPlaneToggle) {
+        this.btnCutPlaneToggle.addEventListener('click', () => {
+          this.showSectionPlane = !this.showSectionPlane;
+          this.btnCutPlaneToggle.classList.toggle('active', this.showSectionPlane);
+          if (this.sectionPlane) {
+            if (this.showSectionPlane && this.isSectionCutActive) {
+              this.sectionPlane.classList.remove('hidden');
+              this.updateSectionPlaneVisualizer();
+            } else {
+              this.sectionPlane.classList.add('hidden');
+            }
+          }
+          this.sound.playPop(500, 500, 0.04);
+        });
+      }
+    }
+
+    toggleSectionCut(forceState) {
+      const next = forceState !== undefined ? forceState : !this.isSectionCutActive;
+      this.isSectionCutActive = next;
+
+      if (this.btnSectionCut) this.btnSectionCut.classList.toggle('active', next);
+
+      if (next) {
+        if (this.quiz && this.quiz.active) {
+          this.quiz.exit();
+        }
+
+        if (this.sectionCutBar) this.sectionCutBar.classList.remove('hidden');
+        if (this.btnCutReset) this.btnCutReset.classList.remove('active');
+
+        this.updateSectionCutRanges(true);
+        this.applySectionCut();
+        this.sound.playPop(400, 600, 0.09);
+      } else {
+        if (this.sectionCutBar) this.sectionCutBar.classList.add('hidden');
+        if (this.sectionPlane) this.sectionPlane.classList.add('hidden');
+
+        this.grid.setCutConfig({ enabled: false });
+        this.blockCountEl.textContent = this.grid.blocks.size;
+        this.sound.playPop(480, 240, 0.08);
+      }
+    }
+
+    updateSectionCutRanges(resetToDefault = false) {
+      const ranges = this.grid.getCoordinateRanges();
+      const axisRange = ranges[this.sectionAxis] || { min: 0, max: 0 };
+
+      if (this.cutSlider) {
+        this.cutSlider.min = axisRange.min;
+        this.cutSlider.max = axisRange.max;
+
+        if (resetToDefault) {
+          if (this.sectionMode === 'above' && axisRange.max > axisRange.min) {
+            this.sectionValue = axisRange.max - 1;
+          } else {
+            this.sectionValue = Math.round((axisRange.min + axisRange.max) / 2);
+          }
+          this.cutSlider.value = this.sectionValue;
+        } else {
+          this.sectionValue = Math.max(axisRange.min, Math.min(axisRange.max, this.sectionValue));
+          this.cutSlider.value = this.sectionValue;
+        }
+      }
+
+      const btnAbove = document.getElementById('btn-cut-above');
+      const btnBelow = document.getElementById('btn-cut-below');
+      const btnSlice = document.getElementById('btn-cut-slice');
+
+      if (this.sectionAxis === 'y') {
+        if (btnAbove) btnAbove.textContent = 'Cut Above ⏏';
+        if (btnBelow) btnBelow.textContent = 'Cut Below ⏦';
+        if (btnSlice) btnSlice.textContent = 'Single Floor ⚏';
+      } else if (this.sectionAxis === 'x') {
+        if (btnAbove) btnAbove.textContent = 'Cut Right ➔';
+        if (btnBelow) btnBelow.textContent = 'Cut Left ⬅';
+        if (btnSlice) btnSlice.textContent = 'Single Slice ⚏';
+      } else if (this.sectionAxis === 'z') {
+        if (btnAbove) btnAbove.textContent = 'Cut Front ▲';
+        if (btnBelow) btnBelow.textContent = 'Cut Back ▼';
+        if (btnSlice) btnSlice.textContent = 'Single Slice ⚏';
+      }
+    }
+
+    applySectionCut() {
+      if (!this.isSectionCutActive) return;
+
+      this.isSectionCutActive = true;
+      if (this.btnSectionCut) this.btnSectionCut.classList.add('active');
+      if (this.btnCutReset) this.btnCutReset.classList.remove('active');
+
+      const axisName = this.sectionAxis.toUpperCase();
+      let modeSymbol = '';
+      if (this.sectionMode === 'above') modeSymbol = '≤ ';
+      else if (this.sectionMode === 'below') modeSymbol = '≥ ';
+      else if (this.sectionMode === 'slice') modeSymbol = '= ';
+
+      if (this.cutCoordBadge) {
+        this.cutCoordBadge.textContent = `${axisName} ${modeSymbol}${this.sectionValue}`;
+      }
+
+      this.grid.setCutConfig({
+        enabled: true,
+        axis: this.sectionAxis,
+        value: this.sectionValue,
+        mode: this.sectionMode,
+      });
+
+      const { visibleCount, totalCount } = this.grid.applyCut();
+      this.blockCountEl.textContent = `${visibleCount} / ${totalCount}`;
+
+      this.updateSectionPlaneVisualizer();
+    }
+
+    updateSectionPlaneVisualizer() {
+      if (!this.sectionPlane || !this.showSectionPlane || !this.isSectionCutActive) {
+        if (this.sectionPlane) this.sectionPlane.classList.add('hidden');
+        return;
+      }
+
+      this.sectionPlane.classList.remove('hidden');
+
+      let minX = 0, maxX = 0;
+      let minY = 0, maxY = 0;
+      let minZ = 0, maxZ = 0;
+
+      if (this.grid.blocks.size > 0) {
+        minX = Infinity; maxX = -Infinity;
+        minY = Infinity; maxY = -Infinity;
+        minZ = Infinity; maxZ = -Infinity;
+        for (const b of this.grid.blocks.values()) {
+          if (b.x < minX) minX = b.x;
+          if (b.x > maxX) maxX = b.x;
+          if (b.y < minY) minY = b.y;
+          if (b.y > maxY) maxY = b.y;
+          if (b.z < minZ) minZ = b.z;
+          if (b.z > maxZ) maxZ = b.z;
+        }
+      }
+
+      const cx = ((minX + maxX) / 2) * CUBE_SIZE;
+      const cy = -((minY + maxY) / 2) * CUBE_SIZE;
+      const cz = ((minZ + maxZ) / 2) * CUBE_SIZE;
+
+      const spanX = Math.max((maxX - minX + 1) * CUBE_SIZE + 100, 360);
+      const spanY = Math.max((maxY - minY + 1) * CUBE_SIZE + 100, 360);
+      const spanZ = Math.max((maxZ - minZ + 1) * CUBE_SIZE + 100, 360);
+
+      const val = this.sectionValue;
+      const axis = this.sectionAxis;
+      const mode = this.sectionMode;
+
+      let planeTransform = '';
+      let width = 360;
+      let height = 360;
+
+      if (axis === 'y') {
+        width = spanX;
+        height = spanZ;
+        const planeY = (mode === 'below')
+          ? (-val * CUBE_SIZE + HALF_SIZE + 0.5)
+          : (-val * CUBE_SIZE - HALF_SIZE - 0.5);
+        planeTransform = `translate3d(${cx}px, ${planeY}px, ${cz}px) rotateX(90deg)`;
+      } else if (axis === 'x') {
+        width = spanZ;
+        height = spanY;
+        const planeX = (mode === 'below')
+          ? (val * CUBE_SIZE - HALF_SIZE - 0.5)
+          : (val * CUBE_SIZE + HALF_SIZE + 0.5);
+        planeTransform = `translate3d(${planeX}px, ${cy}px, ${cz}px) rotateY(90deg)`;
+      } else if (axis === 'z') {
+        width = spanX;
+        height = spanY;
+        const planeZ = (mode === 'below')
+          ? (val * CUBE_SIZE - HALF_SIZE - 0.5)
+          : (val * CUBE_SIZE + HALF_SIZE + 0.5);
+        planeTransform = `translate3d(${cx}px, ${cy}px, ${planeZ}px)`;
+      }
+
+      this.sectionPlane.style.transform = planeTransform;
+      if (this.sectionPlaneSurface) {
+        this.sectionPlaneSurface.style.width = `${width}px`;
+        this.sectionPlaneSurface.style.height = `${height}px`;
+      }
+
+      if (this.sectionPlaneBadge) {
+        const modeLabel = mode === 'above' ? '≤' : (mode === 'below' ? '≥' : '=');
+        this.sectionPlaneBadge.textContent = `CUT ${axis.toUpperCase()} ${modeLabel} ${val}`;
+      }
+    }
+
     setupKeyboardShortcuts() {
       window.addEventListener('keydown', (e) => {
         // Prevent hotkeys when typing in input
         if (e.target.tagName === 'INPUT') return;
 
         if (e.key === 'Escape') {
+          if (this.isSectionCutActive) {
+            this.toggleSectionCut(false);
+            return;
+          }
           if (this.quiz && this.quiz.active) {
             this.quiz.exit();
             return;
@@ -2441,6 +2863,8 @@
         } else if (e.key.toLowerCase() === 'x') {
           const isXray = this.viewport.classList.toggle('xray-mode');
           this.btnXray.classList.toggle('active', isXray);
+        } else if (e.key.toLowerCase() === 's') {
+          this.toggleSectionCut();
         } else if (e.key.toLowerCase() === 'h') {
           const isHeights = this.viewport.classList.toggle('show-heights');
           this.btnHeights.classList.toggle('active', isHeights);

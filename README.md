@@ -37,6 +37,7 @@ Designed as an educational tool to help students and kids develop 3D spatial thi
 - **Educational Tools**:
   - **Seamless Blocks (`G`)**: Inner grids between adjacent coplanar blocks are hidden by default, merging connected cubes into a single seamless piece. Blocks remain cleanly distinguished by color.
   - **White Mode / Disable Colors (`W` / `C`)**: Temporarily renders all blocks pure white (like an architectural massing sculpture) while preserving underlying color assignments.
+  - **Section Cut / Slice Structure (`S`)**: Temporarily cut through the upper part of the structure at any height level (`Y`) or straight area (`X` or `Z`) to see through and inspect interior rooms without altering your build. Supports *Cut Above*, *Cut Below*, and *Single Layer* isolation, real-time scrubbing sliders, steppers, and an interactive 3D cutting plane sheet.
   - **X-Ray Mode (`X`)**: Make blocks translucent to see interior and lower floors.
   - **Height Labels (`H`)**: Toggle elevation height markers (`H:0`, `H:1`, `H:2`...) on cubes.
   - **High-Contrast Styling**: 2px dark charcoal perimeter borders and neutral studio gray background for maximum visual clarity.
@@ -83,6 +84,7 @@ Then open your browser at **`http://localhost:8088`**.
 | `W` / `C` | Toggle White Mode (Disable Colors Temporarily) |
 | `Shift + Click` | Delete Block |
 | `X` | Toggle X-Ray Mode |
+| `S` | Toggle Section Cut / Slice Mode (Cut at Y, X, or Z) |
 | `H` | Toggle Height Elevation Labels |
 | `Ctrl + Z` / `Cmd + Z` | Undo |
 | `Ctrl + Y` / `Cmd + Shift + Z` | Redo |
