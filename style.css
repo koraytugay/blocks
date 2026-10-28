@@ -375,6 +375,36 @@ body[data-active-mode="paint"] .cube:hover .face {
   cursor: pointer;
 }
 
+/* -------------------------------------------------------------
+   Section Cut: View-Only Mode (No Ghost Preview or Add/Edit Hover)
+   ------------------------------------------------------------- */
+body.cut-active .face {
+  cursor: default !important;
+}
+
+body.cut-active[data-active-mode="add"] .face:hover,
+body.cut-active [data-active-mode="add"] .face:hover {
+  filter: none !important;
+  border-color: #0f172a !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65) !important;
+}
+
+body.cut-active[data-active-mode="delete"] .cube:hover .face,
+body.cut-active [data-active-mode="delete"] .cube:hover .face,
+body.cut-active[data-active-mode="paint"] .cube:hover .face,
+body.cut-active [data-active-mode="paint"] .cube:hover .face {
+  filter: none !important;
+  background-color: var(--block-color, #ffffff) !important;
+  border-color: #0f172a !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65) !important;
+  cursor: default !important;
+}
+
+body.cut-active .face:hover::after,
+body.cut-active .ghost-cube {
+  display: none !important;
+}
+
 /* Ghost / Snap preview block */
 .ghost-cube,
 .ghost-cube .face {

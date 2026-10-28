@@ -2124,7 +2124,7 @@
     // while the mouse is not moving)
     refreshGhost() {
       const face = this.hoveredFace;
-      if (!face || !face.isConnected || this.currentMode !== 'add') {
+      if (!face || !face.isConnected || this.currentMode !== 'add' || this.isSectionCutActive) {
         this.grid.hideGhost();
         return;
       }
@@ -2203,6 +2203,11 @@
           this.grid.hideGhost();
           return;
         }
+        if (this.isSectionCutActive) {
+          this.hoveredFace = null;
+          this.grid.hideGhost();
+          return;
+        }
         if (this.camera.isPointerDown) {
           this.hoveredFace = null;
           this.grid.hideGhost();
@@ -2222,6 +2227,7 @@
       // Click handling on blocks
       this.viewport.addEventListener('pointerup', (e) => {
         if (this.quiz && this.quiz.active) return;
+        if (this.isSectionCutActive) return; // View-only in Section Cut mode
         // If it was a drag, ignore click
         if (this.camera.hasDragged) return;
 
@@ -2565,6 +2571,9 @@
         this.btnCutReset.addEventListener('click', () => {
           this.grid.setCutConfig({ enabled: false });
           this.isSectionCutActive = false;
+          document.body.classList.remove('cut-active');
+          this.grid.hideGhost();
+          this.hoveredFace = null;
           this.btnSectionCut.classList.remove('active');
           if (this.sectionPlane) this.sectionPlane.classList.add('hidden');
           this.btnCutReset.classList.add('active');
@@ -2654,8 +2663,11 @@
       this.isSectionCutActive = next;
 
       if (this.btnSectionCut) this.btnSectionCut.classList.toggle('active', next);
+      document.body.classList.toggle('cut-active', next);
 
       if (next) {
+        this.grid.hideGhost();
+        this.hoveredFace = null;
         if (this.quiz && this.quiz.active) {
           this.quiz.exit();
         }
@@ -2720,6 +2732,9 @@
       if (!this.isSectionCutActive) return;
 
       this.isSectionCutActive = true;
+      document.body.classList.add('cut-active');
+      this.grid.hideGhost();
+      this.hoveredFace = null;
       if (this.btnSectionCut) this.btnSectionCut.classList.add('active');
       if (this.btnCutReset) this.btnCutReset.classList.remove('active');
 
