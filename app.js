@@ -698,19 +698,31 @@
         }
       }
 
-      // Recalculate face occlusions considering only visible (uncut) blocks
+      // Recalculate face occlusions:
+      // - For uncut blocks: hide face if coplanar neighbor is uncut, show face if no neighbor or neighbor is cut.
+      // - For cut blocks: show only exterior faces (facing empty air). Internal faces between adjacent
+      //   cut blocks or touching uncut blocks are hidden to avoid internal clutter and coplanar z-fighting.
       for (const block of this.blocks.values()) {
-        if (this.isBlockCut(block.x, block.y, block.z)) continue;
+        const isCut = this.isBlockCut(block.x, block.y, block.z);
 
         for (const [faceName, cfg] of Object.entries(FACES_CONFIG)) {
           const nx = block.x + cfg.dx;
           const ny = block.y + cfg.dy;
           const nz = block.z + cfg.dz;
           const neighbor = this.get(nx, ny, nz);
-          if (neighbor && !this.isBlockCut(nx, ny, nz)) {
-            block.faces[faceName].classList.add('hidden');
+
+          if (isCut) {
+            if (neighbor) {
+              block.faces[faceName].classList.add('hidden');
+            } else {
+              block.faces[faceName].classList.remove('hidden');
+            }
           } else {
-            block.faces[faceName].classList.remove('hidden');
+            if (neighbor && !this.isBlockCut(nx, ny, nz)) {
+              block.faces[faceName].classList.add('hidden');
+            } else {
+              block.faces[faceName].classList.remove('hidden');
+            }
           }
         }
       }
